@@ -1,0 +1,30 @@
+artifacts = ["/app/output/bind_report.json"]
+name = "minor-churn-stable-handle"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Systems"
+tags = ["storage", "simulation", "race", "python", "determinism"]
+languages = ["python"]
+difficulty = "advanced"
+expert_time_estimate_hours = 3
+difficulty_explanation = "Device minor numbers churn under supervised cycles while the pathname stays stable, so an archive spindle reattaches read-only and every counter still prints nominal."
+solution_explanation = "solve.sh pins the attachment to the stable handle rather than the churning minor, so a supervised cycle restores writable attachment without a full feeder drop."
+verification_explanation = "tests/test_outputs.py reads slot_ok, drain_ok, geometry_ok, and writable from bind_report.json and requires all four to hold on a supervised attach pass."
+relevant_experience = "Linux block device enumeration, bind-mount lifecycle, and read-only remount diagnosis under device churn."
+
+[verifier]
+timeout_sec = 600
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 7200
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 600
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240

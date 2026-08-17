@@ -1,0 +1,30 @@
+artifacts = ["/app/output/lease_report.json"]
+name = "wasm-lease-confusion"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Security"
+subcategory = "AppSec"
+tags = ["wasm", "sandbox", "capabilities", "snapshot", "restart"]
+languages = ["rust"]
+difficulty = "advanced"
+expert_time_estimate_hours = 1
+difficulty_explanation = "The sandbox decides execution and listing on separate paths, so after a restart-aware replay a lease can be denied for exec while still enumerating, and the divergence depends on the restart epoch rather than the scenario name."
+solution_explanation = "solve.sh routes both surfaces through one reconcile verdict evaluated against the leases.json epochs and the restart stamp from replay_profile.toml."
+verification_explanation = "tests/test_outputs.py requires a deterministic array ordered by scenario_index.json with can_execute equal to listed on every row and no divergent status remaining."
+relevant_experience = "WebAssembly sandbox capability models and authorization-consistency review of Rust runtimes."
+
+[verifier]
+timeout_sec = 1800
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 3600
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 600
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240

@@ -1,0 +1,28 @@
+user_visible_outputs = [
+  "/app/output/matrix_report.json",
+  "/app/output/trace_bundle.jsonl",
+]
+
+internal_harness_files = []
+
+[structured_outputs.matrix_report]
+target = "/app/output/matrix_report.json"
+format = "json"
+instruction_checks = [
+  "schema_version",
+  "reader_lowest_revision",
+  "rng_channel_totals",
+  "replay_format_revision",
+  "scenarios",
+]
+
+[structured_outputs.trace_bundle]
+target = "/app/output/trace_bundle.jsonl"
+format = "jsonl"
+instruction_checks = [
+  "scenario_id",
+  "tick",
+  "merged_dx",
+  "positions",
+  "entropy_mix",
+]

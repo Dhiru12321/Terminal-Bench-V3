@@ -1,0 +1,33 @@
+artifacts = [
+  "/app/output/",
+  "/app/bin/netplay_matrix",
+]
+name = "rollback-replay-divergence"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Systems"
+tags = ["multiplayer", "determinism", "replay", "rollback", "networking"]
+languages = ["c++"]
+difficulty = "advanced"
+expert_time_estimate_hours = 1
+difficulty_explanation = "The rollback path restores the simulation snapshot but not the RNG facade, so replays diverge only when a rollback and an input merge land on the same tick."
+solution_explanation = "solve.sh restores the RNG stream alongside the snapshot and re-derives the command log offset from the replay header."
+verification_explanation = "tests/test_outputs.py replays the seeded scenarios and requires the trace bundle checksum to match the uninterrupted run."
+relevant_experience = "Deterministic lockstep networking and rollback replay debugging."
+
+[verifier]
+timeout_sec = 1200
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 3600
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 600
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240

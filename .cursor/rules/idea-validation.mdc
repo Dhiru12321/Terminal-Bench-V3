@@ -1,0 +1,646 @@
+---
+alwaysApply: false
+---
+# Idea Validation
+
+Reference this file when validating a task idea and producing a spec. It is NOT auto-applied — use `@idea-validation.mdc` explicitly.
+Ruleset: Terminus 3. This repo authors for the scarce end of the curve — `frontier` and `advanced` — so an idea advances only when that is the honest target. `core` and `base` are real platform tiers; they are not what this repo submits.
+
+## What a strong Terminus 3 idea looks like
+
+Earlier editions asked agents to perform a difficult terminal or software task. Terminus 3 asks them to understand a specialized domain, manipulate the right system inside it, and produce a result that satisfies several interacting constraints at once. Judge the seed against that shift before running the collapse machinery below — a seed can survive every anti-trivialization check and still be a well-disguised programming exercise.
+
+An idea is stronger when:
+
+- **The specification must be inferred.** The agent reconstructs what the requirements mean from domain evidence — instrument output, a design document, a drawing, worked examples — instead of receiving a checklist.
+- **Output semantics matter, not appearance.** The deliverable is a native, structurally valid artifact (an editable parametric model, synthesizable RTL, a proof without holes, correctly mutated live state). Something that merely looks right must fail.
+- **Correctness is multidimensional.** Functional correctness, performance, determinism, safety, provenance, state consistency, and generalization to hidden instances have to hold at once.
+- **Constraints interact.** The point is not that requirements are numerous but that they move each other: satisfying one changes what the others permit.
+- **State is part of the problem.** Live databases, stream processors, ERP workflows, serving runtimes — reading current state, sequencing operations, recovering from partial progress, validating from a clean process.
+- **Hidden checks probe understanding.** Semantic equivalence across variations and metamorphic properties, not more instances of the author's happy path.
+
+Say in the decision bullets which of these the seed actually carries. A seed that carries only one of them is thin, and the honest move is to deepen the domain before spending an attempt on it.
+
+## Task types the edition removed
+
+Reject before drafting any spec:
+
+- **Multi-container** ideas (anything that would set `is_multi_container = true` or ship `environment/docker-compose.yaml` with multiple services). Single-container is the only shape this repo starts.
+- **Multi-stage graded** ideas. Terminus 3 removed milestone tasks entirely — no staged layout, no staged grading, no grandfathered path. An idea that naturally splits into a sequence of separately graded stages must be redesigned as a single outcome-verified task, or dropped.
+
+Frontend work is no longer a special case: a web or UI idea is category `Software`, subcategory `Frontend`, validated like any other idea with the ordinary pytest verifier.
+
+## Hard constraints an idea must respect
+
+These are environment facts, not preferences. If the idea cannot live inside them, redesign or reject at Step 2a — construction cannot rescue any of them.
+
+- **No GPU.** Roughly 2 CPU cores, ~8 GB memory, ~10 GB storage. `ML` / `Kernels` remains in scope through CPU-simulated kernels whose numerical output is checked against a reference, or compile-only verification.
+- **The verifier is out of reach.** It runs in a separate container the agent cannot touch and sees only the paths declared in the top-level `artifacts` array of `task.toml`. An idea whose verification would need to roam the agent's filesystem must be redesigned around a declared artifact set; decide at Step 2a what that set is.
+- **Deterministic.** No wall-clock or timing-dependent outcomes, no network flakiness, no randomized results. A seed whose correct answer moves between runs is not a task.
+- **Runtime budget.** `[agent].timeout_sec` has a floor of 1800s and a ceiling of 18000s, and the oracle must finish comfortably inside the budget. An idea that only fits by running the oracle to the wire is too big.
+- **Network.** `network_mode = "public"` is the default; `"no-network"` is for ideas that do not make sense to complete with internet access. Under `no-network` every dependency the oracle needs must already be in the image.
+- **Multi-step.** The idea must require chaining commands, intermediate state, and real reaction along the way. "At least 5 agent steps" is a heuristic for ruling out trivially short work, not a number anyone counts — the real question is whether an agent could finish in one shot without reacting to anything.
+- **No canary strings** anywhere in the eventual task. This is a training dataset.
+- **Novelty is machine-checked.** Prior editions and existing task repositories are compared by embedding similarity. Reskinning an earlier task is caught regardless of how well the reskin is built.
+- **The instruction is screened for AI-generated text** and fails above a threshold. The prompt is author-written prose; plan for that in Step 2b.
+
+## Category and subcategory
+
+Every task carries exactly one `category` and exactly one `subcategory`, Title Case, from this table. Step 2a picks both and records them in the spec metadata.
+
+| Category | Subcategories |
+|---|---|
+| `Science` | `Biology`, `Chemistry`, `Physics`, `Earth`, `Robotics`, `Math`, `Linguistics` |
+| `Software` | `Algorithms`, `Systems`, `Databases`, `Data engineering`, `Frontend`, `Languages` |
+| `ML` | `Training`, `Inference`, `Evaluation`, `Kernels` |
+| `Operations` | `Finance`, `Logistics`, `Supply chain`, `Claims`, `Compliance`, `Marketing` |
+| `Security` | `Cryptography`, `Reverse engineering`, `Forensics`, `AppSec` |
+| `Hardware` | `CAD`, `RTL` |
+| `Media` | `Music`, `Design` |
+
+Pick the category describing the domain the idea lives in, then the subcategory describing the specific work. The most common tagging mistake is defaulting to `Software` because the task involves writing code — nearly every task does. Ask instead what the agent has to understand to get this right: an idea about debugging a training loop is `ML` / `Training`, not `Software` / `Systems`. Reserve `Software` for ideas where software engineering itself is the subject matter. If an idea genuinely spans two categories, choose the one whose domain knowledge the agent cannot succeed without.
+
+The Edition 2 flat category names (`software-engineering`, `debugging`, `data-processing`, and the rest) and the old `subcategories` array are retired. A seed that would have carried one of those labels is not banned — retag it here and judge it on its merits.
+
+Taxonomy category is a different axis from the `category_profile` used later in this file: the profile names the bug family and its disclosure rules. Choose them independently.
+
+## Difficulty tiers
+
+Difficulty is empirical — the average pass@1 over 8 runs, 4 per model across GPT-5.6 and Claude Opus 5.
+
+| Tier | Accuracy |
+|---|---|
+| `frontier` | < 20% |
+| `advanced` | 20% – < 50% |
+| `core` | 50% – < 80% |
+| `base` | 80% – < 100% |
+
+A pass rate above 80% is no longer a rejection reason: `base` is a deliberate tier and 5–15% of the suite. The only unacceptable outcome is 100% averaged across both models. Tiers are language-independent — the Edition 2 rule that Python tasks had to be hard is gone, and `easy` / `medium` / `hard` are retired names.
+
+Step 2a cannot measure a tier; nothing exists yet to run. What it can do is judge whether the idea has the structure that lands at the scarce end of the curve, which is what the hardness axes and anti-trivialization checks below are for. Record the target tier in the spec and treat it as a design commitment, not a prediction.
+
+## Templated tasks are not allowed
+
+Reject ideas that are substantively the same as the author's prior submissions — even with different keywords, symptoms, or file names.
+
+**Reject when:**
+- The idea reuses the same structure, solution approach, or test patterns with plug-and-play swaps
+- Only the instruction wording or surface domain nouns change while the investigative journey, coupling topology, and oracle shape stay the same
+
+**Advance only when:**
+- The problem domain, failure mode, or verification strategy is meaningfully distinct from prior work
+
+Templated submissions are rejected at review and may constitute removal from Project Terminus.
+
+## 5 Hardness Axes
+
+A `frontier` or `advanced` task requires the agent to do ALL of these. An idea that fails any axis lands below the bar this repo submits at.
+
+1. **Discover** — The agent must find information not in the instruction by reading code, running experiments, or analyzing behavior. If the instruction alone contains enough to solve the task, there is nothing to discover.
+2. **Synthesize** — The answer spans multiple interacting systems. No single file or module contains the complete solution. The agent must build a mental model of how parts connect.
+3. **Diagnose** — The instruction describes symptoms ("runs drift", "outputs are wrong") not causes ("the CRC uses half the payload"). The agent must figure out WHAT is wrong, not just fix what it's told.
+4. **Navigate coupling** — Local fixes break distant invariants. The agent can't fix one thing in isolation; it must understand how changes propagate across the system.
+5. **Reason beyond training** — The task requires domain-specific reasoning that can't be pattern-matched from common implementations. Standard textbook problems (HMAC verification, JSON schema validation, Monte Carlo CI, sliding windows) are in-distribution and collapse.
+
+**The instruction completeness test:** Can the agent solve the task by reading ONLY instruction.md, without deeply engaging with the codebase? If yes, the instruction IS the specification, and implementing specs is LLMs' strongest capability. The codebase is decorative.
+
+## 6 Rubric Axes
+
+Every idea must survive all six:
+
+1. **Verifiable** — Deterministic programmatic tests, no subjectivity, reliable on repeated runs, and everything the tests read is declarable in the top-level `artifacts` array.
+2. **Well-specified** — Succinct (1–2 paragraphs ideal). Two people reading should produce equivalent verifiers.
+3. **Solvable** — Expert human can solve in a few hours knowing the approach. Solution < 100k lines.
+4. **Difficult** — Requires professional experience or years of domain expertise. Undergrads should not solve in days. Not hard via tricks, obscure facts, or hidden instances.
+5. **Interesting** — Real-world economic value. Someone would be paid to do this.
+6. **Outcome-verified** — Grade results not process. Do not dictate tools/approach. Do not overspecify output format.
+
+## Shape-Level and Category-Profile Validation
+
+Step 2a validates the seed's category profile; it does not just preserve a
+category label from Step 1. Every GO spec must carry the shape-level,
+profile, risk, actionability, source, and waiver blocks below in the markdown
+spec and strict evidence JSON.
+
+Required fields:
+
+```yaml
+platform_files:
+  - path:
+    role:
+task_files:
+  - path:
+    role:
+fix_frontier:
+  count:
+  distribution:
+  naming_policy:
+  forbidden_stems:
+  helpers_policy:
+  symbol_thin_preferred:
+contract_surface:
+  boolean_fields_max:
+  direct_boolean_assertions_max:
+  preferred_assertion_styles:
+  forbidden_assertion_styles:
+category_profile:
+  bug_family:
+  profile_name:
+  allowed_instruction_disclosures:
+  forbidden_instruction_leaks:
+  category_specific_hardness_bar:
+  category_specific_verifier_risks:
+  coverage_role:
+satisfiability_risk:
+  rc2_planned_name_risk:
+  gx9_contract_risk:
+  cr1_symbol_frontier_risk:
+  hidden_contract_risk:
+actionability_plan:
+  verifier_command_visible:
+  source_fix_intent_visible:
+  generated_output_rule_visible:
+  exact_formula_home:
+  schema_home:
+waiver_plan:
+  waivers_expected:
+  waiver_rationale:
+reference_pattern:
+  reference_task_id: # or justification_if_none
+realism_source:
+  source_type: real_bug | synthetic_exception
+  evidence_basis:
+  upstream_or_synthetic_rationale:
+  minimization_preserves:
+  synthetic_exception_review:
+```
+
+Canonical category profile definitions live in `docs/CATEGORY_PROFILES.md`.
+Use that file as the source of truth for required disclosures, forbidden
+leaks, verifier risks, allowed inferential leaps, anti-patterns, hard bars,
+collapse modes, output-contract shape, verifier structure, and waiver pressure.
+Run `python3 scripts/category_coverage.py --json` when auditing accumulated
+specs; target percentages are configurable guidelines, not hard approval rules.
+
+## Realism Source Policy
+
+Default to real-bug sourcing: real bug, real codebase, and a real patch,
+postmortem, bisect, CVE, open-source issue, or internal bug. Minimize while
+preserving causal structure.
+
+Synthetic exceptions require category profile, realism review, satisfiability
+risk review, actionability plan, no invented answer-key vocabulary, output
+contracts that avoid boolean verdict fields, and extra
+scrutiny for waivers.
+
+Reject or replace seeds with synthetic-unrealism signs:
+
+- Greek/rubric-shaped module names.
+- `op_a`/`phase_b`/`reconcile_c`-style generic fix symbols.
+- Contract fields that restate test verdicts.
+- Metaphor-only instruction language.
+- Generated witnesses under `environment/`.
+- Test schema invented to match the bug rather than program behavior.
+
+Initial category profiles:
+
+| Profile | Instruction must reveal | Instruction may hide | Verifier risks | Required mitigations | Hard bar | One-shot collapse |
+|---|---|---|---|---|---|---|
+| `concurrency_ordering` | Concurrent operations, public ordering invariant, commands, logs, durable outcomes. | Race window, scheduler primitive, lock/queue location, exact interleaving. | Flaky sleeps, single trace, tests that pass by serialization. | Deterministic replay or seeded scheduler, repeated runs, restart-state assertions. | At least two schedulers/queues plus persistence or cancellation state must coordinate. | One lock, one sort, or one sleep in an obvious handler. |
+| `distributed_reconciliation` | Replicas/authorities, conflict scenarios, accepted outcome, sync commands, artifacts. | Canonical source discovery, merge algorithm, stale edge, tombstone mechanics. | Count-only checks, last-write-wins shortcut, golden merged fixture. | Divergent histories, invariant checks, provenance/traces. | Multiple truth surfaces with idempotency and conflict lineage. | Reorder one priority list or fill one merge table. |
+| `state_recovery_crash_consistency` | Crash/restart workflow, durability guarantee, recovery command, expected state. | Journal/checkpoint internals, broken recovery phase, corruption source. | Nondeterministic crash timing, one hidden snapshot, verifier reading internals. | Deterministic crash injection, idempotent reruns, artifact integrity checks. | Partial writes, replay, cleanup, and rerun safety must all coordinate. | Delete a cache, replay one file, or special-case a snapshot. |
+| `file_format_serialization` | External format behavior, compatibility cases, round trip expectations, error behavior. | Parser/serializer module, byte offsets, internal bit layout unless public. | Spec transcription, leaked golden fixture, one decoder helper. | Cross-version fixtures, semantic assertions, malformed/ambiguous inputs. | Parsing, normalization, serialization, and compatibility state interact. | Fill a parser table or copy a named public spec. |
+| `floating_point_numeric_policy` | Metric, tolerance class, reproducibility rule, accepted inputs, public artifacts. | Formula home, reduction order, precision source, cache path. | Brittle tolerance, exact formula as instruction, one epsilon tweak. | Independent numeric oracle, adversarial datasets, fixed seeds, platform-aware tolerance. | Policy precedence spans computation, caching, and comparison surfaces. | Change one constant, cast, rounding mode, or transcribe a formula. |
+| `config_policy_precedence` | Config surfaces, conflict scenarios, public precedence outcomes, reload behavior. | Lookup path, broken layer, precedence table, internal policy source. | Policy-table transcription, one config file, hidden unstated cases. | Multiple scopes, reload/override cases, effective-policy traces. | Effective policy derives across CLI/env/files/runtime state. | Reorder one literal list or set one named knob. |
+| `security_authority_split` | Assets, principals, allowed/denied actions, audit traces, authority boundary. | Vulnerable sink, trust-boundary location, exploit primitive, patch rule. | Toy checklist, blocklist bypass, one exploit-string test. | Multiple principals, revocation/freshness tests, least-privilege assertions. | Split encode/decode/enforce authorities reconcile under changing state. | Add one regex, one permission bit, or one handler guard. |
+| `build_dependency_toolchain` | Build/test commands, artifact identities, platform matrix, reproducibility outputs. | Resolver bug, cache path, generated-file source, exact package edge. | Pin-one-dep fix, network reliance, clean-build-only tests. | Offline fixtures, incremental rebuilds, provenance checks, multiple targets. | Lockfiles, generated artifacts, build graph, and cache invalidation coordinate. | Bump one version or add one missing dependency. |
+| `ml_adversarial_robustness` | Model behavior, threat/quality metric, split policy, generated artifacts. | Feature leak, defense recipe, adversarial construction, training-code locus. | Overfit fixture, train bigger model, nondeterministic metric. | Fixed seeds, held-out adversarial cases, provenance, resource caps. | Data/model/pipeline coupling must be diagnosed, not just score-optimized. | Threshold tweak, hardcoded examples, or one preprocessing filter. |
+| `filesystem_state_reconstruction` | Observed filesystem state, reconstruction command, expected artifacts, preservation constraints. | Inode/source-of-truth choice, corrupt metadata location, reconstruction algorithm. | Hidden-instance puzzle, golden tree leak, one manifest repair. | Multiple generations, conflicting metadata/logs, invariant checks, idempotence. | Canonical state inferred from conflicting mutable evidence across snapshots/logs. | Restore one file/checksum or copy one manifest. |
+
+Profile validation is blocking for GO: the hard bar must be true after every
+externally tested requirement is disclosed, and the smallest plausible patch
+must not match the profile's one-shot collapse entry.
+
+## 21 Anti-Trivialization Checks
+
+Run ALL of these before allowing an idea to proceed to spec.
+
+1. **Disclosure-collapse** — If the task becomes trivial once every checked behavior is stated honestly in instruction.md, reject.
+2. **Hidden-instance** — If the task is hard mainly because the agent doesn't know which one file/record/artifact is broken, reject.
+3. **Single-artifact repair** — If the solution is just "patch one manifest" or "flip one checksum" without a broader fix, reject.
+4. **Generalization** — If the task only targets one named broken instance instead of working across multiple scenarios, reject.
+5. **Prompt-honesty** — If an honest prompt would reveal the exact broken instance and that collapses the search space, reject.
+6. **Cheating-vs-difficulty** — Anti-cheating measures do not create legitimate difficulty by themselves.
+7. **Mechanical-fix filter** — If the only issues are verifier deps, timeout tuning, or reward-footer formatting, that is not a task weakness.
+8. **Localized-fix** — If the fix lives in one tiny function or one obvious file cluster and the prompt names the behavior precisely, serious warning sign.
+9. **Oracle-locality** — If the oracle mostly replaces one or two files wholesale, the task may be too localized.
+10. **Small declarative-cluster** — If the solve is mostly one config block, one manifest, one policy/phase/state table, strong warning sign.
+11. **Grep-collapse** — If prompt nouns grep directly to the buggy block, the task may already be too direct.
+12. **Pre-factored-helper** — If helper names mirror the prompt bullets (`validate`, `extract`, `install`), assume easier than it looks.
+13. **Recipe-discount** — Standard recipes (safe extraction, traversal blocking, jail normalization, policy knob filling) do not count as hard.
+14. **Security-aura discount** — Security nouns, exploit cases, real daemons are not hardness by themselves. Judge the residual reasoning.
+15. **Orthogonal-checklist** — Count coupled insight clusters, not bullet count. If each requirement is independent with no tradeoffs, reject.
+16. **Harness-discount** — Docker complexity, seed generation, multi-service setups are realism, not hardness.
+17. **One-pass solvability** — Could either benchmark model (GPT-5.6, Claude Opus 5) solve this in one pass after opening the obvious files? If yes, reject.
+18. **Tier gate** — Does this honestly sit at `frontier` or `advanced`, or is it merely respectable? A `core`-shaped idea is a FAIL against this repo's profile even though the platform accepts the tier.
+19. **Discovery budget test (BLOCKING)** — Before any files exist, enumerate every non-trivial discovery the future solver must extract from the finished task's codebase or runtime behavior that is NOT stated or directly derivable from instruction.md. The list must contain at least 3 items. For each, name the discovery, where it should live once Step 2b creates the task, and why the instruction must not reveal it. If you cannot name 3, or every item reduces to "find where code doesn't match spec," the task is trivial. Reject. This is the single most reliable hardness test.
+20. **Instruction specificity test** — Check where the instruction falls on this hierarchy: **Spec-complete** (always collapses): exact algorithms, thresholds, schemas, formulas given. **Cause-revealing** (rarely clears the bar): broken component named but full fix not specified. **Symptoms-only** (can clear the bar): observable misbehavior without indicating where or why. A `frontier` or `advanced` instruction must be at the symptoms-only level.
+21. **Topology distribution test (BLOCKING)** — Enumerate **three distinct fix topologies** for this idea. For each topology, name ≥3 code locations (files/functions) that must coordinate, AND demonstrate that no single location is sufficient to pass the tests. If the drafter cannot articulate three topologies each requiring ≥3 locations, the idea fundamentally has a one-function exploit locus — it will trivialize regardless of how well Step 2b drafts it. Ideas that pass this test produce fix-locus distribution at realization time; ideas that fail it cannot be rescued by construction discipline. This is the structural analogue of check 19 (discovery budget): discovery_budget measures what the solver must LEARN; topology_distribution measures what the solver must COORDINATE.
+
+Post-disclosure collapse addendum: after every tested formula, invariant,
+constant, event rule, and schema is visible, reject if the remaining task is
+mostly mapping each public rule to one obvious function/module. Hiding the rule
+is not an allowed hardening tactic.
+
+## What Does NOT Count as Hard
+
+Reject these patterns actively:
+
+- **"Implement this spec" tasks** — If the instruction gives complete algorithms, schemas, rules, and output formats, the agent just translates English to code. Complex output ≠ hard problem. A 200-field JSON report is trivial if every field's computation is specified.
+- **Build-from-scratch with no existing system** — Tasks with 0-5 environment files where the agent writes everything from a blank canvas. Without an existing codebase to understand, the agent operates in its ideal mode.
+- **Instruction-as-diagnosis** — Instructions that name exact causes ("the CRC uses half the payload") instead of symptoms ("resumed runs produce different results"). The diagnosis IS the hard work.
+- **In-distribution domains** — HMAC verification, JSON schema validation, Monte Carlo simulation, policy checkers, sliding window algorithms, Merkle trees — these have thousands of implementations in training data.
+- **Undergrad-scale course projects** — CRUD services, toy auth, simple compilers, textbook protocol exercises
+- **Giant-scope builds** — "Rewrite the kernel in Rust", "build a Gmail clone"
+- **Obscure-fact lookups** — Knowing one magic RFC sentence, man-page flag, or library quirk
+- **Tedious volume** — Reviewing 100k lines, hand-editing repetitive files, mass data cleanup
+
+## 4 Concrete Collapse Patterns to Reject
+
+1. **Disclosed policy-knob transcription** — Prompt names exact config files and exact knobs to set.
+2. **Finite state-table repair** — Solution is a tiny literal table mirroring the prompt.
+3. **Toy jail/hardening checklist** — Editable surface is a few scripts + one config, orthogonal checklist.
+4. **Pre-factored safe-extractor recipe** — Helper names match prompt bullets, fill in the textbook recipe.
+
+## Accept / Reject Exemplars
+
+**Accept-style:**
+- "Implement a GPT-2 forward pass in C in <4000 bytes." — Hard, outcome-verifiable, not hidden-instance.
+- "Write a Verilog circuit that implements a CPU for a custom assembler under a gate budget." — Hard after disclosure.
+- "Harden a local service so a general fix survives multiple adversarial scenarios." — Acceptable when verifier checks multiple behaviors and fix is not localized.
+- "Repair a drift monitor whose alert-layer symptom is produced by defects in the statistics and distance utilities beneath it." — Correctness spans statistical validity, alert stability, and behavior across distinct scenario inputs at once.
+- "Infer the geometry described by an engineering drawing and produce an editable parametric model." — Requirements are inferred from domain evidence and the artifact must be semantically valid, not merely similar-looking.
+
+**Reject-style:**
+- "Rewrite the Linux kernel in Rust with full syscall compatibility." — Absurd scope.
+- "Report today's trending topics from a live third-party API." — Needs secrets and has no stable answer to verify.
+- "Build a FastAPI CRUD invoicing service with auth." — Course project.
+- "Find which one of 400 daily manifests is corrupted." — Hidden-instance difficulty.
+- "Fix a real scheduler lab by setting the listed policy knobs." — Policy-knob transcription.
+- "Harden an SSH jail where the repo has one config and a few shell scripts." — Toy hardening checklist.
+- "Write a Python script that reads JSON config, validates CSV schemas, and writes a report." — Implement-this-spec.
+- "Build a Monte Carlo simulator with confidence intervals. Here are the formulas." — In-distribution spec implementation.
+- "Write an HMAC verification tool that checks a ledger." — Standard crypto recipe, no existing system.
+
+## Validation Loop
+
+The validation loop is managed by `scripts/validate_loop.py`, not by the LLM. The script tracks attempts, decides when to stop (early stopping on plateau), and manages spec files.
+
+**Your job per attempt:** run the 5 hardness axes, 21 anti-trivialization checks, 6 rubric axes, instruction completeness test, category-profile validation, and collapse audit. Output one clean Step-2b authoring spec plus a structured evidence JSON that matches `specs/validation_schema.json`. The script handles scoring, state transitions, and gating.
+
+**Naming-pass requirement:** before building the evidence JSON,
+draft the symptoms-only instruction prose and extract its nouns.
+That noun list IS `construction_manifest.code_forbidden_tokens`
+and `naming_pass.instruction_nouns_extracted` — both must agree.
+For every fix-path symbol, file path, and test name you plan,
+audit it against the noun list. If a token from the list appears
+as a substring, rename it and record the rename in
+`naming_pass.renames_during_drafting`. Empty rename lists are
+allowed but flagged WARN — the loop surfaces it to make sure you
+actually looked.
+
+**Concentration math:** `flipping_point_contract.concentration_cap`
+is enforced arithmetically. The loop computes per-location ratios
+from `controls_tests` and rejects any location whose ratio exceeds
+the cap. Your `naming_pass.concentration_math` must agree with
+that computation; disagreement is a hard failure.
+
+## Structured Evidence Contract
+
+Every Step 2a attempt must produce a JSON evidence sidecar matching `specs/validation_schema.json`.
+
+Required top-level fields:
+- `hardness_axes`
+- `anti_trivialization_checks`
+- `rubric_axes`
+- `instruction_completeness_test`
+- `discovery_budget`
+- `instruction_specificity`
+- `attack_path`
+- `smallest_plausible_patch`
+- `collapse_audit`
+- `topology_enumeration`
+- `construction_manifest`
+- `naming_pass`
+
+Strict-mode top-level fields:
+- `platform_files`
+- `task_files`
+- `fix_frontier`
+- `contract_surface`
+- `category_profile`
+- `satisfiability_risk`
+- `actionability_plan`
+- `waiver_plan`
+- `reference_pattern`
+- `realism_source`
+
+`scripts/validate_loop.py record --strict` requires the strict-mode fields. Without
+`--strict`, missing shape-level fields are warnings for backward compatibility.
+
+Default-workflow blocking rules:
+- `discovery_budget` must list at least 3 non-trivial solver discoveries the finished task will force from the codebase/runtime
+- each `discovery_budget` item must name the discovery, where it should live after Step 2b, and why instruction.md must not reveal it
+- `instruction_specificity.level` must be `symptoms-only` for any GO outcome
+- GO is forbidden if required evidence is missing, malformed, or contradicts those blocking checks
+- `naming_pass.instruction_nouns_extracted` must equal
+  `construction_manifest.code_forbidden_tokens` as sets
+  (case-insensitive). Disagreement is blocking.
+- No entry in `naming_pass.test_names_audited` may contain any
+  token from `instruction_nouns_extracted` as a substring
+  (case-insensitive). Hits are blocking.
+- `naming_pass.concentration_math` must match the validator's
+  recomputation from `flipping_point_contract`. Mismatch or any
+  per-location ratio over `concentration_cap` is blocking.
+
+The loop stores this evidence with each attempt. Integer FAIL/WARN counts are secondary summaries, not the source of truth.
+
+**Spec file rules:**
+- `specs/<task-name>.md` — contains ONLY the current variant's authoring spec. This is the human handoff and drafting input for Step 2b.
+- `specs/<task-name>-candidate-N.md` — plateau candidate authoring specs (script tells you when to save here).
+- `specs/<task-name>-attempt-N-evidence.json` — structured evidence saved by the validation loop for attempt `N`
+- `specs/<task-name>-validation-log.md` — attempt history (managed by the script).
+
+The authoring spec is the only drafting input for Step 2b. If `scripts/validate_loop.py` emits legacy diagnostic sidecar paths for candidate bookkeeping, treat them as internal script diagnostics; they are not human handoff artifacts and should not be used for drafting.
+
+See `workflow-prompts.md` Step 2a for the automated loop prompt.
+
+## Spec Output Format
+
+When the winning variant is GO, produce one authoring spec using this structure. Every Step 2a authoring spec produced after the v2 rollout MUST declare `version: 2` in `### Metadata`; specs without it are rejected by `scripts/validate_loop.py finalize` (the strict post-save gate). v2 specs MUST also include the three subsections under `## Authoring Brief` named below (Triviality Ledger, Per-gate Pitfall Inventory, Initial Draft Commitments) — each with at least one bullet.
+
+### Authoring Spec (`specs/<task-name>.md` or `specs/<task-name>-candidate-N.md`)
+
+```
+### Decision
+[GO / STOP] — Attempt [N]. [1-3 bullets explaining what changed, e.g., "GO — Attempt 2. Scattered code across 3 roots, split persistence layer, neutralized API naming."]
+
+### Metadata
+- version: 2
+- Task name: [kebab-case slug]
+- Title: [3-4 word human title]
+- Category: [exactly one Title Case category from the taxonomy]
+- Subcategory: [exactly one Title Case subcategory valid for that category]
+- Languages: [array]
+- Difficulty: [target tier — `frontier` or `advanced`]
+- Tags: [3-6 values]
+
+## Authoring Brief
+[This file is the only drafting input for Step 2b. Do NOT include reviewer-only analysis, oracle steps, exact patch sites, or an exhaustive file tree here.]
+
+### Public contract
+[requirements, constraints, output files, schemas, and externally visible behavior — NOT the full instruction text]
+
+### platform_files
+
+- path: task.toml
+  role: metadata
+- path: instruction.md
+  role: natural public task prompt
+- path: output_contract.toml
+  role: local output declaration
+- path: tests/Dockerfile
+  role: separate verifier image
+- path: tests/test.sh
+  role: verifier entrypoint
+- path: tests/test_outputs.py
+  role: domain verifier
+- path: solution/solve.sh
+  role: oracle
+- path: environment/Dockerfile
+  role: build definition
+- path: construction_manifest.json
+  role: local authoring artifact
+
+### task_files
+
+- path: environment/<component>/<file>
+  role: shape-level task-specific file commitment
+
+### fix_frontier
+
+- count: [expected number of fix-frontier locations]
+- distribution: [shape-level spread across roots/subsystems]
+- naming_policy: [opaque/neutral naming rule]
+- forbidden_stems: [instruction nouns/stems to avoid on fix path]
+- helpers_policy: [how helper/decoy surfaces may be named]
+- symbol_thin_preferred: [true/false]
+
+### contract_surface
+
+- boolean_fields_max: [integer]
+- direct_boolean_assertions_max: [integer]
+- preferred_assertion_styles: [observations/traces/artifacts/computed invariants]
+- forbidden_assertion_styles: [boolean answer keys/direct truth-bit contracts]
+
+Output-contract design rule:
+- Prefer observations, traces, measurements, artifacts, and run records.
+- Tests should derive verdicts from those records.
+- Avoid named boolean verdict fields unless they are a real product contract.
+- Avoid field names ending in `_ok`, `_green`, `_valid`, `_passes`, or `_stays_green` unless the seed gives a real-product justification.
+- Avoid `scenario->key->expected` boolean tables in `instruction.md`.
+- Prefer cross-run invariants, metamorphic properties, round-trip checks, derived hashes from visible formulas, state convergence, schema/type checks, and partial-revert traps.
+- If exact formulas, types, sizes, constants, digest algorithms, or tolerances are tested, their visible home must be planned now.
+
+Bad:
+
+```json
+{
+  "readiness_green_alpha": true,
+  "bodies_match_across_profiles": true
+}
+```
+
+Good:
+
+```json
+{
+  "runs": [...],
+  "entries": [...],
+  "refreshes": [...]
+}
+```
+
+### category_profile
+
+- bug_family: [specific bug family]
+- profile_name: [one initial category profile]
+- allowed_instruction_disclosures: [what Instruction.md may reveal]
+- forbidden_instruction_leaks: [what would reveal the patch]
+- category_specific_hardness_bar: [profile-specific hard bar]
+- category_specific_verifier_risks: [profile-specific verifier risks]
+- coverage_role: [why this task improves category/profile coverage]
+
+### satisfiability_risk
+
+- rc2_planned_name_risk: [low/medium/high + reason]
+- gx9_contract_risk: [low/medium/high + reason]
+- cr1_symbol_frontier_risk: [low/medium/high + reason]
+- hidden_contract_risk: [low/medium/high + reason]
+
+### actionability_plan
+
+- verifier_command_visible: [what command/signal Instruction.md exposes]
+- source_fix_intent_visible: [no unless public API requires it; explain]
+- generated_output_rule_visible: [outputs/traces/artifacts Instruction.md names]
+- exact_formula_home: [instruction/public artifact/test-derived/not applicable]
+- schema_home: [instruction/public artifact/not applicable]
+
+### waiver_plan
+
+- waivers_expected: [yes/no]
+- waiver_rationale: [if yes, exact pressure; if no, why none expected]
+
+### reference_pattern
+
+- reference_task_id: [reference task id, if available]
+- justification_if_none: [why no reference task exists, if absent]
+
+Reference mapping is required for new tasks. Use
+`docs/reference_tasks/index.json` as the source of promoted reference ids. If no
+entry fits, write a concrete `justification_if_none`; do not invent a reference
+id and do not copy a reference task's files. Validate with
+`python3 scripts/reference_task_check.py specs/<task-name>.md --strict` before
+Step 2b.
+
+### realism_source
+
+- source_type: [real_bug|synthetic_exception]
+- evidence_basis: [patch, postmortem, bisect, CVE, open-source issue, internal bug, or synthetic rationale]
+- upstream_or_synthetic_rationale: [source pointer or why a synthetic exception is justified]
+- minimization_preserves: [causal structure preserved from the source bug]
+- synthetic_exception_review: [not required for real_bug, or required review summary]
+
+### Failure topology
+[1-2 paragraphs describing the symptom clusters, invariant boundaries, interacting subsystems, and why the task is hard without naming the fix path or solution steps]
+
+### Environment shape
+[component-level map only. Name the major directories/subsystems/data domains that must exist and what role they play. Do NOT provide an exact file-by-file scaffold or call out likely fix files.]
+
+### Required artifacts
+[what Step 2b must create at a high level: instruction, environment Dockerfile, environment components, `solve.sh`, the verifier (`tests/Dockerfile`, `tests/test.sh`, `tests/test_outputs.py`), and the top-level `artifacts` paths the separate verifier will read. Environment file count is a realism signal, not evidence of hardness — name the modules, data, and configs the task genuinely needs instead of a padding target. See `task-creation.mdc`.]
+
+### Test plan
+[what each test checks — at least 6 tests]
+[for each: what it verifies, whether multiple valid approaches exist, whether chain-dependent]
+
+### Drafting guardrails
+[1 short paragraph on what Step 2b must avoid leaking through instructions, names, tests, comments, fixtures, or structure]
+
+### Triviality Ledger
+
+- (one bullet per known triviality risk: name the trap and the structural reason it's blocked. e.g. "naive global flush passes cross-session test but fails handle-lifetime test because <reason>")
+
+[Required for v2 specs. At least one bullet. Each entry should name a concrete trivialization the future drafter or solver could fall into and the structural reason — invariant, test coupling, cross-file coordination — that the spec already prevents it. The Triviality Ledger is the spec's evidence that named hardness survives construction; an empty or hand-waving ledger is a v2 contract violation.]
+
+### Per-gate Pitfall Inventory
+
+- (one bullet per gate the spec must clear: RC1-RC7, GX1/GX3/GX9/GX10, static checks. Name the pitfall and the construction-time countermeasure for each.)
+
+[Required for v2 specs. At least one bullet per checked gate. The drafter must be able to read a gate's name and immediately know the specific construction risk this spec faces and what the spec's design already does to neutralize it. This subsection turns gate names into actionable construction constraints rather than abstract verifications.]
+
+### Initial Draft Commitments
+
+- (exhaustive list of task-relative paths the Step 2b drafter will create. This is the authoritative file inventory for `tb3-task-author` §3 — every path here must be created, no path outside this list may be added without amending the spec.)
+
+[Required for v2 specs. At least one bullet, and realistic specs run to dozens of entries because the environment carries the modules, data, and configs the task genuinely needs. The drafter treats this as the canonical file plan: any divergence (added files, missing files, renames) requires a spec amendment, not a quiet drafter improvisation. This subsection closes the loop from the construction manifest's symbol-level commitments to the file-tree level.]
+
+### Construction manifest (BLOCKING — Step 2b must follow this verbatim)
+
+This section is the machine-checkable handoff to Step 2b. Prose guardrails above are necessary but insufficient — the drafter has been observed to violate them while believing it satisfied them (Apr 2026 audit: 5 of 10 shipped tasks trivialized via telegraphs the "avoid prompt nouns" guardrail was supposed to prevent). The construction manifest replaces drafter name-invention with a committed specification.
+
+#### symbol_table
+
+Pre-assign non-domain names for every symbol on the fix path (the symbols Step 2b's `solve.sh` will touch). Step 2b must use these names verbatim — it cannot rename, relocate, or add new top-level symbols on the fix path outside this table.
+
+Required format (YAML-like, one entry per fix-path symbol):
+
+```
+- path: <file-path relative to environment/>
+  symbol: <opaque non-domain name>
+  kind: function | class | constant
+  signature: <exact signature; parameter names must not lexically or semantically match any instruction noun>
+  purpose: <one line describing what the body does — NOT why it's the fix>
+```
+
+Naming rules:
+- Every symbol name on the fix path must be opaque to the instruction. If the instruction is about "lineage," names like `pick_lineage`, `resolve_lineage`, `lineage_of` are forbidden. Use opaque identifiers: `op_a`, `reconcile_b`, `resolve_c`, `step_1`, `phase_b`, etc.
+- Parameter names must not match instruction nouns. If the instruction mentions three authorities, do not take three parameters named after those authorities.
+- Paths should not concentrate in a single directory named after the task's core concept. Distribute.
+
+List every symbol the oracle touches, including helpers. Minimum 3 entries (paired with flipping_point_contract requiring ≥3 locations).
+
+#### flipping_point_contract
+
+Commit to a test-subset structure that proves the fix is not concentrated in one location. Step 2b verifies this mechanically after the oracle works: revert each location in isolation, rerun tests, confirm the declared subset flips.
+
+Required format:
+
+```
+locations:
+  - id: A
+    path: <file that gets reverted>
+    controls_tests: [test_1, test_2]
+  - id: B
+    path: <different file>
+    controls_tests: [test_3, test_4]
+  - id: C
+    path: <different file>
+    controls_tests: [test_5]
+no_single_location_flips_majority: true
+concentration_cap: 0.5    # max fraction of tests any single location may control
+```
+
+Constraints:
+- Minimum 3 locations across distinct directories or distinct module roots.
+- No single location may control more than 50% of tests (`concentration_cap ≤ 0.5`).
+- Test subsets may overlap but the union must cover every test.
+- Step 2b's `scripts/collapse_check.py --check flipping_point_compliance` verifies this after the oracle runs green.
+
+#### decoy_manifest
+
+Name 2-4 helper modules or files with signatures that structurally rhyme with fix-path symbols but are NOT on the fix path. Step 2b creates these as part of environment/ with bodies that do genuine non-fix work.
+
+Required format:
+
+```
+- path: <file path>
+  kind: module | helper | config-reader
+  rhymes_with: <fix_path_symbol_id from symbol_table>
+  non_fix_purpose: <what this file actually does in non-fix scenarios>
+```
+
+A codebase where one module is "wrong-shaped" relative to several similar-looking ones cannot be trivialized by `find | xargs cat` scanning.
+
+#### code_forbidden_tokens
+
+Enumerate every noun in instruction.md (nouns plus domain-meaningful compound nouns). Step 2b must not use any of these as a function name, class name, top-level constant, directory name, or parameter name anywhere **on the fix path**.
+
+**This ban applies to CODE SYMBOLS ONLY.** The instruction itself is unrestricted — it uses whatever standard domain language makes the contract clear to a reader. The Apr 2026 `enum-packing-split` post-mortem confirmed that drafters misreading this rule as "obfuscate the instruction too" produces trivial tasks (where the agent decodes from tests + driver files) or unsolvable tasks (where tests introduce requirements the jargon-only instruction never documented). The rule is that `pick_lineage` cannot be a function name when the instruction talks about "build lineage" — NOT that the instruction must avoid the word "lineage."
+
+Required format:
+
+```
+code_forbidden_tokens: [<noun1>, <noun2>, ...]
+```
+
+`scripts/collapse_check.py --check grep_resistance` verifies this after construction by greping each token across the oracle frontier's code symbols.
+```
+
+### Internal Diagnostic Notes
+
+If `scripts/validate_loop.py` still asks for a legacy diagnostic sidecar, keep
+it compact and internal. It may mirror scoring rationale, collapse-audit notes,
+and naming-pass evidence for script bookkeeping, but the public Step 2a output
+is the authoring spec above. Human handoff reviews `specs/<task-name>.md` only,
+and Step 2b drafts from that spec only.

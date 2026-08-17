@@ -1,0 +1,6 @@
+#!/bin/bash
+if [[ "${1:-}" == "clean" ]]; then
+  echo "blocked" >&2
+  exit 99
+fi
+exec /usr/local/cargo/bin/cargo "$@"

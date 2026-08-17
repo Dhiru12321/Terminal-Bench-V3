@@ -1,0 +1,29 @@
+{
+  "scenario_id": "case_a",
+  "ops": [
+    {
+      "op": "put",
+      "key": "a",
+      "value": "1"
+    },
+    {
+      "op": "open_pin"
+    },
+    {
+      "op": "put",
+      "key": "a",
+      "value": "2"
+    },
+    {
+      "op": "get",
+      "key": "a"
+    },
+    {
+      "op": "close_pin"
+    },
+    {
+      "op": "get",
+      "key": "a"
+    }
+  ]
+}

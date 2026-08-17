@@ -1,0 +1,33 @@
+artifacts = [
+  "/app/src/",
+  "/app/data/",
+]
+name = "lsm-snapshot-recovery"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Databases"
+tags = ["persistence", "crash-recovery", "iterators", "storage-engine", "determinism"]
+languages = ["c++"]
+difficulty = "advanced"
+expert_time_estimate_hours = 2
+difficulty_explanation = "A pinned cursor keeps a tile alive across a level merge, so recovery replays a WAL segment the layout index already considers retired."
+solution_explanation = "solve.sh applies the two staged patches that retire the pin before the merge and rebuild the layout index from the WAL tail."
+verification_explanation = "tests/test_outputs.py runs the eight recorded crash cases and requires deterministic recovery output for each."
+relevant_experience = "LSM storage engines, WAL recovery, and iterator pinning semantics."
+
+[verifier]
+timeout_sec = 900
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 3600
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 600
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240

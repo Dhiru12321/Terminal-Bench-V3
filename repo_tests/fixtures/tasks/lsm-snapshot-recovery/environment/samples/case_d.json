@@ -1,0 +1,27 @@
+{
+  "scenario_id": "case_d",
+  "ops": [
+    {
+      "op": "partial_layout_bump",
+      "delta": 4
+    },
+    {
+      "op": "put",
+      "key": "k1",
+      "value": "x"
+    },
+    {
+      "op": "flush"
+    },
+    {
+      "op": "partial_layout_bump",
+      "delta": 7
+    },
+    {
+      "op": "restart"
+    },
+    {
+      "op": "check_structure"
+    }
+  ]
+}

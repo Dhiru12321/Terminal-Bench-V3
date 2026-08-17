@@ -1,0 +1,86 @@
+---
+alwaysApply: false
+---
+# TB3 Critical Path
+
+Short critical path. Deep rules carry details. Ruleset: Terminus 3.
+
+## 0. Verify repo facts
+
+Before naming a path, command, field, output, or test file, open source or `commands.md`.
+
+- `/app/...`: `instruction.md` or environment source; `output_contract.toml` is authoring metadata unless mirrored there.
+- `task.toml`: existing tasks/static-check output. Tests: `tests/test.sh` or verifier files.
+- Long run: `python3 scripts/tb3_doctor.py`.
+- Prefer `task_gate.py`/`harbor_gate.py`; if `echo visible` is invisible, start fresh.
+- Host Python is not task-container Python.
+
+## 1. Step 2a before Step 2b
+
+If the idea can be solved from `instruction.md` alone, reject/redesign before drafting.
+
+## 2. Before task edits
+
+Read `specs/<task-name>.md`, `task-creation.mdc`, `difficulty-calibration.mdc`,
+and `docs/HARD_BUT_FAIR_AUTHORING.md`. If the spec lacks required
+ledgers/profile/actionability/reference fields, return to Step 2a.
+
+`instruction.md` reads like a human task prompt. It must reveal source-fix
+intent, verifier pipeline, generated-vs-static rules, and tested
+schemas/invariants/formulas/types without naming the patch file/function.
+
+## 3. Terminus 3 shape
+
+- `tests/Dockerfile` builds the verifier image; `[verifier].environment_mode = "separate"`.
+- Top-level `artifacts` is the only thing the verifier sees; `tests/Dockerfile` must
+  `mkdir -p` every parent directory.
+- Descriptive fields live under `[metadata]`; top-level copies are ignored.
+- `[agent].timeout_sec` floor is 1800s, ceiling 18000s.
+- Do not ship `rubrics.txt` or `README.md`; Snorkel packages both.
+
+## 4. Step 2b gate order
+
+`lint_spec` -> `spec_satisfiability` (spec, then `--task-dir`) -> `task_gate`
+-> `check-task.sh` -> `harbor_gate --oracle --nop` -> `step2b_ready` ->
+`harbor_gate --oracle-repeat 10` -> `package_task --validate` ->
+`first_look_packet` -> `approve_task.py --strict`.
+
+Exact invocations live in `commands.md`; do not reconstruct them from memory.
+Preflight is not Step 2b PASS. Repeated oracle is Step 4 only. Task-file edits
+make evidence stale.
+
+## 5. Dirty flag
+
+`check-task.sh` writes `.step2b-checksum`; `approve_task.py` verifies it. Do not
+delete, forge, or bypass it.
+
+## 6. Final approval
+
+Before READY / APPROVED / SUBMIT: oracle 10x passed, NOP 0.0, zip validation
+passed, strict hidden-contract gate passed or WARN has a reviewer decision,
+first-look passed or has a packet-hash-bound reviewer note, and
+`approve_task.py` exited 0.
+
+## 7. Forbidden shortcuts
+
+- Editing tests to fit a broken solution.
+- Golden answers under `environment/` or answer-shaped values in `instruction.md`.
+- `instruction.md` as a patch recipe or output-only prompt when the verifier regenerates outputs.
+- Hidden solver instructions in environment files (`HINT:`, `STEP N:`, "to solve this").
+- AI-specific filenames anywhere in the archive.
+- Real author identifiers instead of anonymous placeholders.
+- Decorative code, empty files, or `solve.sh` padding to inflate metrics.
+- Milestone layout (`steps/`, `milestone_*.md`) — Terminus 3 removed milestone tasks.
+- Retired `task.toml` keys: `codebase_size`, `number_of_milestones`, `subcategories`,
+  `allow_internet`, `junior_time_estimate_min`, `expert_time_estimate_min`.
+- Templated tasks — reskinning a prior submission's structure, solution, or tests.
+- Non-canonical final-runtime base image without a credible Dockerfile-comment justification.
+- Version-pinned apt installs; CI blocks them. Pin language dependencies instead.
+- Canary strings in any component.
+- Claiming a command passed without command output.
+- Bypassing `.step2b-checksum`.
+
+## 8. Escalate or demote
+
+Three recurring failures need a CNI entry before another critical bullet. If a
+bullet has not fired in ten task authorings, propose demotion.

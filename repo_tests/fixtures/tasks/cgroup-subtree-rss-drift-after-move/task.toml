@@ -1,0 +1,33 @@
+artifacts = [
+  "/app/output/charge_view.json",
+  "/app/output/stage.done",
+]
+name = "cgroup-subtree-rss-drift-after-move"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Systems"
+tags = ["resource-accounting", "observability", "migration-semantics", "multi-reader-consistency", "pytest"]
+languages = ["python"]
+difficulty = "advanced"
+expert_time_estimate_hours = 2
+difficulty_explanation = "Re-homing a subtree moves charge between shards without retiring the stale attach path, so parent aggregates and the on-box reader disagree only after a refresh bump."
+solution_explanation = "solve.sh reattaches handles to the current layout generation and folds the migrated charge into the parent rollup before either reader samples it."
+verification_explanation = "tests/test_outputs.py requires handles_ok, aligned_ok, and skew_ok in charge_view.json, with both replay orderings producing identical shard totals."
+relevant_experience = "Cgroup v2 memory accounting, subtree migration semantics, and multi-reader consistency debugging."
+
+[verifier]
+timeout_sec = 600
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 5400
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 900
+cpus = 1
+memory_mb = 1024
+storage_mb = 4096

@@ -1,0 +1,19 @@
+# Local authoring metadata. Never shipped in the submission zip — package_task.py
+# strips it and validate_submission_zip.py rejects it at the archive root.
+#
+# Declare every path the instruction promises the agent will produce. Each entry
+# in user_visible_outputs must be named in instruction.md, and each structured
+# output's target must also appear in user_visible_outputs.
+
+user_visible_outputs = [
+  "/app/output.txt",
+]
+
+internal_harness_files = []
+
+[structured_outputs.output]
+target = "/app/output.txt"
+format = "text"
+instruction_checks = [
+  "hello",
+]

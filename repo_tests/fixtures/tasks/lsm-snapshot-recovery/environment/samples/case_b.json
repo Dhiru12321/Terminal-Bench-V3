@@ -1,0 +1,32 @@
+{
+  "scenario_id": "case_b",
+  "ops": [
+    {
+      "op": "put",
+      "key": "gone",
+      "value": "v0"
+    },
+    {
+      "op": "flush"
+    },
+    {
+      "op": "obliterate",
+      "key": "gone"
+    },
+    {
+      "op": "flush"
+    },
+    {
+      "op": "merge"
+    },
+    {
+      "op": "get",
+      "key": "gone"
+    },
+    {
+      "op": "scan",
+      "start": "gone",
+      "end": "gone"
+    }
+  ]
+}

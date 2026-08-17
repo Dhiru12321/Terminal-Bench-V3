@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "notes": "No task is promoted to references until every field in reference_task_template.md has current evidence. Ready-looking zips are listed as promotion candidates only. New specs should use reference_pattern.reference_task_id when a promoted reference fits, or justification_if_none when none applies.",
+  "references": [
+    {
+      "reference_task_id": "layered-policy-reload-drift",
+      "task_path": "tasks/layered-policy-reload-drift",
+      "status": "promoted",
+      "final_zip_path": "Task_Ready_To_Submit/layered-policy-reload-drift.zip",
+      "category_profile": "config_policy_precedence",
+      "source_type": "real_bug",
+      "why_rc2_passes": "0/3 oracle targets were predictable from instruction, file-name, or test-name signals; no directory-keyword overlap.",
+      "why_cr1_cr8_pass": "CR1: all three declared fix symbols are present and no exact patch-symbol leaks were detected. CR8: no single visible file references more than one declared fix-path symbol; max references in one file was 1.",
+      "why_gx6_gx9_pass": "GX6: natural symptom/actionability causation; no exact patch symbols or patch verbs. GX9: the instruction does not enumerate scenario/key/value triples; tests derive correctness from observation records.",
+      "why_cr2_passes": "The flipping-point contract has three locations across three roots and max single-location test share is 43%, below the 50% cap.",
+      "instruction_reveals": "The instruction reveals the command, generated output path, JSON top-level shape, source-fix requirement, regeneration requirement, and the externally tested behavior: clean/refreshed convergence, fallback after removal, and source/value consistency. The visible contract doc supplies source labels, setting names, precedence order, and detailed record schema.",
+      "instruction_does_not_reveal": "The instruction does not identify the broken layer, lookup path, source files, functions, internal source-composition table, live-state repair, observation-framing patch, or patch order.",
+      "output_contract_pattern": "Observation-shaped JSON report with runs, steps, records, chosen values, source labels, and seen_sources chains. Tests derive precedence, convergence, fallback, and source-attribution verdicts from records instead of reading boolean answer-key fields.",
+      "dynamic_discriminator": "The verifier deletes/regenerates /app/output/policy_observations.json through the normal runner and checks clean, refresh, removal, handle-reuse, default-stability, and source-chain invariants. Static JSON writes, wrapper-only changes, single-location fixes, and broad state clearing fail meaningful subsets.",
+      "oracle_pass_evidence": "Harbor oracle jobs/2026-05-10__11-54-22; 1/1, mean 1.000, reward=1.0 count 1.",
+      "nop_fail_evidence": "Harbor NOP jobs/2026-05-10__11-54-56; 1/1, mean 0.000, reward=0.0 count 1.",
+      "first_look_summary": "PASS; packet /tmp/layered-policy-reload-drift-first-look.txt; packet_hash 50467c8ced509fcc15358f52361993c4d5a3a5aad9f32f0faf4aa4127068ef92.",
+      "collapse_summary": "WARN-only with recorded justifications: RC1: oracle uses parseable whole-file frontier edits; not a delete-only simplification. RC8: normal environment/app packaging concentration; CR2 verifies three roots across core, live, and emit. GX3: borderline edit distance but spread across three behavioral frontiers. GX6: natural symptom/actionability causation; no exact patch symbols or patch verbs.",
+      "oracle_nop_summary": "Final oracle jobs/2026-05-10__11-54-22; 1/1, mean 1.000. Final NOP jobs/2026-05-10__11-54-56; 1/1, mean 0.000.",
+      "repeated_oracle_summary": "Repeated oracle jobs/2026-05-10__11-55-27; 10/10, mean 1.000, reward=1.0 count 10.",
+      "reviewer_hardness_notes": "The source composition, refresh-state reuse, and report generation behavior must be fixed together. A correct solution has to preserve precedence, converge clean and refreshed runs, keep source attribution aligned with chosen values, and regenerate the report through the normal command.",
+      "partial_fix_or_ablation_notes": "No separate ablation artifact was required for promotion. Reviewer analysis records partial fixes that fail for meaningful reasons across precedence, refresh state, source attribution, and regeneration behavior.",
+      "rational_failure_modes": [
+        "Fixing only precedence leaves refresh state stale.",
+        "Clearing all refresh state breaks controls.",
+        "Fixing only output shape leaves chosen/source mismatch.",
+        "Hardcoding JSON fails regenerated-output checks."
+      ],
+      "reviewer_spec_pass_evidence": "validate_submission_zip.py PASS on 2026-05-10; archive root contains instruction.md, task.toml, environment/, solution/, tests/ and no forbidden files. approve_task.py --strict PASS on 2026-05-10 with --skip-verifier-health and --no-emit-metrics. Repo tests PASS, 316 tests. git diff --check PASS.",
+      "waivers_used": [],
+      "no_waiver_summary": "No waivers used."
+    }
+  ],
+  "promotion_candidates": [
+    {
+      "task_id": "cachefile-shadow-root-override",
+      "zip_path": "Task_Ready_To_Submit/cachefile-shadow-root-override.zip",
+      "status": "needs_evidence_before_promotion",
+      "evidence_needed": [
+        "category_profile",
+        "source_type",
+        "RC2/CR1/CR8/GX6/GX9 rationale",
+        "oracle pass evidence",
+        "NOP fail evidence",
+        "first-look summary",
+        "collapse summary",
+        "oracle/NOP summary",
+        "repeated oracle summary",
+        "reviewer hardness notes",
+        "reviewer spec pass evidence",
+        "waiver summary"
+      ]
+    },
+    {
+      "task_id": "ci-simulator-slice-alignment",
+      "zip_path": "Task_Ready_To_Submit/ci-simulator-slice-alignment.zip",
+      "status": "needs_evidence_before_promotion",
+      "evidence_needed": [
+        "category_profile",
+        "source_type",
+        "RC2/CR1/CR8/GX6/GX9 rationale",
+        "oracle pass evidence",
+        "NOP fail evidence",
+        "first-look summary",
+        "collapse summary",
+        "oracle/NOP summary",
+        "repeated oracle summary",
+        "reviewer hardness notes",
+        "reviewer spec pass evidence",
+        "waiver summary"
+      ]
+    },
+    {
+      "task_id": "csv-shift-detection-stream-parser",
+      "zip_path": "Task_Ready_To_Submit/csv-shift-detection-stream-parser.zip",
+      "status": "needs_evidence_before_promotion",
+      "evidence_needed": [
+        "category_profile",
+        "source_type",
+        "RC2/CR1/CR8/GX6/GX9 rationale",
+        "oracle pass evidence",
+        "NOP fail evidence",
+        "first-look summary",
+        "collapse summary",
+        "oracle/NOP summary",
+        "repeated oracle summary",
+        "reviewer hardness notes",
+        "reviewer spec pass evidence",
+        "waiver summary"
+      ]
+    },
+    {
+      "task_id": "seccomp-profile-mirage",
+      "zip_path": "Task_Ready_To_Submit/seccomp-profile-mirage.zip",
+      "status": "needs_evidence_before_promotion",
+      "evidence_needed": [
+        "category_profile",
+        "source_type",
+        "RC2/CR1/CR8/GX6/GX9 rationale",
+        "oracle pass evidence",
+        "NOP fail evidence",
+        "first-look summary",
+        "collapse summary",
+        "oracle/NOP summary",
+        "repeated oracle summary",
+        "reviewer hardness notes",
+        "reviewer spec pass evidence",
+        "waiver summary"
+      ]
+    },
+    {
+      "task_id": "udev-alias-churn",
+      "zip_path": "Task_Ready_To_Submit/udev-alias-churn.zip",
+      "status": "needs_evidence_before_promotion",
+      "evidence_needed": [
+        "category_profile",
+        "source_type",
+        "RC2/CR1/CR8/GX6/GX9 rationale",
+        "oracle pass evidence",
+        "NOP fail evidence",
+        "first-look summary",
+        "collapse summary",
+        "oracle/NOP summary",
+        "repeated oracle summary",
+        "reviewer hardness notes",
+        "reviewer spec pass evidence",
+        "waiver summary"
+      ]
+    }
+  ]
+}

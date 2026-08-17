@@ -1,0 +1,7 @@
+#include <sys/stat.h>
+
+int cache_still_valid(const char *plugin_path, const char *seal_path) {
+  (void)plugin_path;
+  (void)seal_path;
+  return 0;
+}

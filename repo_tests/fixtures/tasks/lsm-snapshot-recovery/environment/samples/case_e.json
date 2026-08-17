@@ -1,0 +1,45 @@
+{
+  "scenario_id": "case_e",
+  "ops": [
+    {
+      "op": "put",
+      "key": "m",
+      "value": "0"
+    },
+    {
+      "op": "flush"
+    },
+    {
+      "op": "put",
+      "key": "m",
+      "value": "1"
+    },
+    {
+      "op": "flush"
+    },
+    {
+      "op": "open_pin"
+    },
+    {
+      "op": "obliterate",
+      "key": "m"
+    },
+    {
+      "op": "flush"
+    },
+    {
+      "op": "merge"
+    },
+    {
+      "op": "get",
+      "key": "m"
+    },
+    {
+      "op": "close_pin"
+    },
+    {
+      "op": "get",
+      "key": "m"
+    }
+  ]
+}

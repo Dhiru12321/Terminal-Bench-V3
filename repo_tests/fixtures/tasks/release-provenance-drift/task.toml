@@ -1,0 +1,30 @@
+artifacts = ["/app/out/"]
+name = "release-provenance-drift"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Systems"
+tags = ["provenance", "packaging", "incremental-build", "plugins", "ci"]
+languages = ["rust", "cpp", "c"]
+difficulty = "advanced"
+expert_time_estimate_hours = 2
+difficulty_explanation = "The staging graph caches a Rust build script result across a plugin removal, so the sealed package records provenance for a plugin that is no longer linked."
+solution_explanation = "solve.sh keys the stage cache on the resolved plugin set and reseals the package from the post-removal loader state."
+verification_explanation = "tests/test_outputs.py runs the partial-fix matrix and requires the seal to match the linked plugin set in every sequence."
+relevant_experience = "Release engineering across mixed Rust/C++ build graphs and provenance sealing."
+
+[verifier]
+timeout_sec = 5400
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 10800
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 600
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240

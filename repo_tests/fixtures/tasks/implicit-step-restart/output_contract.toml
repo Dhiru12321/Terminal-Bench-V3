@@ -1,0 +1,15 @@
+user_visible_outputs = [
+  "/app/out/restart_report.json",
+  "/app/out/persistence_audit.log",
+]
+
+internal_harness_files = []
+
+[structured_outputs.restart_report]
+target = "/app/out/restart_report.json"
+format = "json"
+instruction_checks = [
+  "operator_signature_checksum",
+  "schedules",
+  "integrity_probes",
+]

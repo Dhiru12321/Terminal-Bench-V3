@@ -1,0 +1,36 @@
+[tolerances]
+rtol = 1e-5
+atol = 1e-8
+safety = 0.88
+facmin = 0.22
+facmax = 2.05
+alpha_pi = 0.65
+beta_pi = 0.05
+
+[newton]
+max_iter = 28
+tol = 1e-11
+
+[integration]
+t_start = 0.0
+t_end = 1.18
+initial_dt = 0.00011
+y0 = [1.0, 0.52, 0.31]
+
+[model]
+k0 = 0.038
+k1 = 11.4
+k2 = 2.65
+
+[mass]
+diagonal = [1.22, 1.0, 0.86]
+
+[discretization]
+stability_extra_damping = 0.0
+
+[butcher]
+gamma = 0.2928932188134524
+
+[event]
+target_level = 1.0065
+component = 0

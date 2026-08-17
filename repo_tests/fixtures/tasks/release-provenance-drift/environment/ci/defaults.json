@@ -1,0 +1,4 @@
+{
+  "default_profile": "release",
+  "layout_path": "/app/stage_graph/stage_layout.json"
+}

@@ -1,0 +1,39 @@
+{
+  "scenario_id": "case_f",
+  "ops": [
+    {
+      "op": "put",
+      "key": "aa",
+      "value": "1"
+    },
+    {
+      "op": "put",
+      "key": "bb",
+      "value": "2"
+    },
+    {
+      "op": "flush"
+    },
+    {
+      "op": "open_pin"
+    },
+    {
+      "op": "put",
+      "key": "cc",
+      "value": "3"
+    },
+    {
+      "op": "scan",
+      "start": "aa",
+      "end": "zz"
+    },
+    {
+      "op": "close_pin"
+    },
+    {
+      "op": "scan",
+      "start": "aa",
+      "end": "zz"
+    }
+  ]
+}

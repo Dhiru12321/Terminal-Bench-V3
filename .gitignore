@@ -1,0 +1,36 @@
+# Environment
+.env
+.env.*
+
+# Validation working state
+specs/.*.json
+tasks/*/.step2b-checksum
+tasks/*/.step2b-metrics.jsonl
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+
+# OS
+.DS_Store
+Thumbs.db
+# Windows NTFS "Mark of the Web" metadata (WSL shows these as separate files)
+*:Zone.Identifier
+*_Zone.Identifier
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Do not track/push local task work
+tasks/*/
+Task_Ready_To_Submit/*
+jobs/*/

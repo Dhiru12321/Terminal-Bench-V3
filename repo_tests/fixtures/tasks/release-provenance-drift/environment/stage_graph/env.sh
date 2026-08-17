@@ -1,0 +1,5 @@
+export STAGE_ROOT="${STAGE_ROOT:-/app/stage}"
+export PKG_ROOT="${PKG_ROOT:-/app/out/pkg}"
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/app/target}"
+export PROFILE="${PROFILE:-release}"
+export CMAKE_BUILD_DIR="${CMAKE_BUILD_DIR:-/app/build/cpp}"

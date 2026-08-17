@@ -1,0 +1,10 @@
+{
+  "release": {
+    "rust": ["libplugin_core.so"],
+    "cpp": ["libcpp_bridge.so", "liblegacy.so"]
+  },
+  "debug": {
+    "rust": ["libplugin_core.so"],
+    "cpp": ["libcpp_bridge.so", "liblegacy.so"]
+  }
+}

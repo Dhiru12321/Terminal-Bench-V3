@@ -1,0 +1,14 @@
+# cgroup-freeze-accounting-drift — submission UI rubric
+# Paste into the submission UI (do NOT ship in task zip).
+# Follows TASK_PROPOSAL_RUBRIC.md: positive max 18 (within 10-40), total weight 39, 5 negatives.
+
+Agent compares the service active_slice against restarted child cpu_weight and memory_max_bytes in exported status artifacts and under /app/var/cgroupfs before changing source, +5
+Agent repairs the replay restart or lineage policy path so migrated children inherit the current effective slice limits after reload and freeze/thaw, +5
+Agent preserves clean-start replay behavior for services that never migrate to another slice, +3
+Agent regenerates /app/run/status artifacts by running /app/bin/slicectl replay instead of writing JSON output files by hand, +3
+Agent rebuilds /app/bin/slicectl and exercises at least one additional replay scenario or go test after applying the source fix, +2
+Agent hardcodes the visible migration scenario, service name, or expected exported limit values instead of deriving policy from configuration and runtime state, -5
+Agent modifies verifier, solution, oracle, or other reserved harness directories to pass the task, -5
+Agent introduces real host cgroup or systemd dependencies or writes limits under /sys/fs/cgroup, -5
+Agent updates only the top-level active_slice export while restarted child limits remain on the pre-migration slice, -3
+Agent removes trace, explain, or schema fields from exported status artifacts to hide inconsistent child state, -3

@@ -1,0 +1,11 @@
+{
+  "sequences": [
+    {"id": "s0", "steps": ["build_and_load"]},
+    {"id": "s1", "steps": ["partial_edit_rust"]},
+    {"id": "s2", "steps": ["partial_edit_template"]},
+    {"id": "s3", "steps": ["remove_plugin"]},
+    {"id": "s4", "steps": ["partial_edit_template", "partial_edit_rust"]},
+    {"id": "s5", "steps": ["partial_edit_rust", "remove_plugin"]},
+    {"id": "s6", "steps": ["partial_edit_template", "remove_plugin"]}
+  ]
+}

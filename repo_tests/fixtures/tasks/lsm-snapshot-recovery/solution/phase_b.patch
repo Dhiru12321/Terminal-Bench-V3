@@ -1,0 +1,56 @@
+--- a/src/api/engine.cpp
++++ b/src/api/engine.cpp
+@@ -114,7 +114,7 @@
+ int Engine::open_pin() {
+   nlohmann::json rec = {{"op", "open_pin"}, {"id", next_pin_}};
+   append_wal(rec);
+-  ViewSnap snap = base_from_tiles(tiles_);
++  ViewSnap snap = materialize_visible();
+   pins_.push_layer(snap);
+   has_active_pin_ = true;
+   active_pin_ = next_pin_;
+@@ -157,7 +157,7 @@
+       persist_tile_file(folded.id, folded.rows);
+     }
+   } else if (op == "open_pin") {
+-    ViewSnap snap = base_from_tiles(tiles_);
++    ViewSnap snap = materialize_visible();
+     pins_.push_layer(snap);
+     has_active_pin_ = true;
+   } else if (op == "close_pin") {
+@@ -165,7 +165,7 @@
+     has_active_pin_ = !pins_.empty();
+   } else if (op == "layout_bump") {
+     int d = rec.at("delta").get<int>();
+-    layout_.bump_by(d >> 1);
++    layout_.bump_by(d);
+   }
+ }
+ 
+@@ -176,6 +177,7 @@
+   has_active_pin_ = false;
+   layout_.set_generation(0);
++  buffer_.clear();
+   next_tile_ = 1;
+   wal_.scan_records([this](const std::string& line) {
+     try {
+       nlohmann::json rec = nlohmann::json::parse(line);
+@@ -190,16 +191,14 @@
+ 
+ std::string Engine::get(const std::string& key) const {
+   if (has_active_pin_ && pins_.top() != nullptr) {
+-    ViewSnap live = merge_overlay(*pins_.top(), buffer_.rows());
+-    return encode_get(live, key);
++    return encode_get(*pins_.top(), key);
+   }
+   return encode_get(materialize_visible(), key);
+ }
+ 
+ std::string Engine::scan(const std::string& start, const std::string& end) const {
+   if (has_active_pin_ && pins_.top() != nullptr) {
+-    ViewSnap live = merge_overlay(*pins_.top(), buffer_.rows());
+-    return encode_scan(live, start, end);
++    return encode_scan(*pins_.top(), start, end);
+   }
+   return encode_scan(materialize_visible(), start, end);
+ }

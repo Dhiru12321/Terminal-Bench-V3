@@ -1,0 +1,30 @@
+artifacts = ["/app/out/report.json"]
+name = "public-contract-standard"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Systems"
+tags = ["contract", "report", "json"]
+languages = ["python"]
+difficulty = "advanced"
+expert_time_estimate_hours = 4
+difficulty_explanation = "Fixture task used to pin the output-contract and instruction checks."
+solution_explanation = "Fixture task; no oracle behaviour is exercised."
+verification_explanation = "Fixture task; the verifier contract is declared in output_contract.toml."
+relevant_experience = "Fixture task used by the repo regression suite."
+
+[verifier]
+timeout_sec = 900
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 3600
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 600
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240

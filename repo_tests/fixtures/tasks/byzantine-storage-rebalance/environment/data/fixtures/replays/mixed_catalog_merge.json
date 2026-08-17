@@ -1,0 +1,31 @@
+{
+  "name": "mixed_catalog_merge",
+  "checkpoints": [
+    {
+      "id": "live",
+      "rows": 1,
+      "cols": 1,
+      "values": [42]
+    }
+  ],
+  "events": [
+    {
+      "type": "rebalance_loop",
+      "max_ticks": 80,
+      "peers": [
+        {
+          "peer_id": "p1",
+          "shards": [
+            { "shard_id": 0, "layout": 1, "avail_bytes": 50, "free_bytes": 0 }
+          ]
+        },
+        {
+          "peer_id": "p2",
+          "shards": [
+            { "shard_id": 0, "layout": 2, "avail_bytes": 0, "free_bytes": 200 }
+          ]
+        }
+      ]
+    }
+  ]
+}

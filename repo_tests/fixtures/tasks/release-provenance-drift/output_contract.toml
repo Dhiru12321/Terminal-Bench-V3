@@ -1,0 +1,13 @@
+user_visible_outputs = [
+  "/app/out/pkg/seal.json",
+]
+
+internal_harness_files = []
+
+[structured_outputs.seal]
+target = "/app/out/pkg/seal.json"
+format = "json"
+instruction_checks = [
+  "epoch",
+  "files",
+]

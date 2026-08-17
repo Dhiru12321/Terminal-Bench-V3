@@ -1,0 +1,33 @@
+artifacts = [
+  "/app/output/schedule_report.json",
+  "/app/output/execution_trace.jsonl",
+]
+name = "resource-aware_submission"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Systems"
+tags = ["scheduler", "parallel-execution", "resource-management", "debugging", "global-resource-limits"]
+languages = ["python"]
+difficulty = "advanced"
+expert_time_estimate_hours = 3
+difficulty_explanation = "First-start sizing reads the conservative declared pair instead of the measured telemetry pair named in workload_index.txt, so the busiest tick stays under both cluster caps and join-ab under-reports its peak."
+solution_explanation = "solve.sh moves reservation sizing onto the measurement columns inside the scheduler package so the heaviest concurrent tick saturates a cap and peak fields match the catalog measurements."
+verification_explanation = "tests/test_outputs.py replays the executor, requires byte-identical schedule_report.json across runs, and checks makespan, wait, retry, and adaptive_accept constraints against cluster_limits.json."
+relevant_experience = "Discrete-event DAG scheduling, admission control, and cluster resource-limit debugging in Python."
+
+[verifier]
+timeout_sec = 300
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 7200
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 600
+cpus = 1
+memory_mb = 2048
+storage_mb = 10240

@@ -1,0 +1,30 @@
+artifacts = ["/app/output.txt"]
+name = "default-template"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Systems"
+tags = ["template", "python", "scaffold"]
+languages = ["python"]
+difficulty = "advanced"
+expert_time_estimate_hours = 6
+difficulty_explanation = "Replace this with the core crux an agent has to get right — the thing that makes the task hard rather than merely long."
+solution_explanation = "Replace this with how solution/solve.sh derives the result."
+verification_explanation = "Replace this with how tests/test_outputs.py decides the task was solved."
+relevant_experience = "Replace this with the background that qualified you to author this task."
+
+[verifier]
+timeout_sec = 1800
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 3600
+
+[environment]
+network_mode = "public"
+build_timeout_sec = 900
+cpus = 2
+memory_mb = 8192
+storage_mb = 10240

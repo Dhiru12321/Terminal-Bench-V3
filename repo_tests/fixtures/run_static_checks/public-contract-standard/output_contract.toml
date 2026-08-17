@@ -1,0 +1,15 @@
+user_visible_outputs = [
+  "/app/out/report.json",
+]
+
+internal_harness_files = [
+  "/app/.state/private-cache.bin",
+]
+
+[structured_outputs.report]
+target = "/app/out/report.json"
+format = "json"
+instruction_checks = [
+  "checksum",
+  "status",
+]

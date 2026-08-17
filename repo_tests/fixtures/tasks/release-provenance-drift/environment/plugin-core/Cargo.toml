@@ -1,0 +1,11 @@
+[package]
+name = "plugin-core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "plugin_core"
+crate-type = ["cdylib"]
+
+[build-dependencies]
+sha2 = "0.10"

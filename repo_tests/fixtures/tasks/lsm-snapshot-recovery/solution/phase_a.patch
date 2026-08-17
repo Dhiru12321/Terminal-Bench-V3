@@ -1,0 +1,29 @@
+--- a/src/level_merge/merge.cpp
++++ b/src/level_merge/merge.cpp
+@@ -2,22 +2,16 @@
+ 
+ namespace ts {
+ 
+-namespace {
+-constexpr const char* kTomb = "__T__";
+-}
+-
+ TileChunk fold_level(const TileChunk& older, const TileChunk& newer) {
+   TileChunk out;
+   out.id = newer.id;
+-  for (const auto& [k, v] : older.rows) {
++  for (const auto& [k, v] : newer.rows) {
+     out.rows[k] = v;
+   }
+-  for (const auto& [k, v] : newer.rows) {
+-    auto it = out.rows.find(k);
+-    if (v == kTomb && it != out.rows.end() && it->second != kTomb) {
+-      continue;
++  for (const auto& [k, v] : older.rows) {
++    if (out.rows.find(k) == out.rows.end()) {
++      out.rows[k] = v;
+     }
+-    out.rows[k] = v;
+   }
+   return out;
+ }

@@ -1,0 +1,38 @@
+{
+  "scenario_id": "case_g",
+  "ops": [
+    {
+      "op": "put",
+      "key": "x",
+      "value": "1"
+    },
+    {
+      "op": "flush"
+    },
+    {
+      "op": "put",
+      "key": "y",
+      "value": "2"
+    },
+    {
+      "op": "flush"
+    },
+    {
+      "op": "merge"
+    },
+    {
+      "op": "partial_layout_bump",
+      "delta": 5
+    },
+    {
+      "op": "crash_truncate_journal",
+      "keep_bytes": 47
+    },
+    {
+      "op": "restart"
+    },
+    {
+      "op": "check_structure"
+    }
+  ]
+}

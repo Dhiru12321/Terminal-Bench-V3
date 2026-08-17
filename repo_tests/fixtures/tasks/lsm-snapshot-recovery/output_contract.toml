@@ -1,0 +1,14 @@
+user_visible_outputs = [
+  "/app/src",
+]
+
+internal_harness_files = []
+
+[structured_outputs.structure_snapshot]
+target = "/app/src"
+format = "json"
+instruction_checks = [
+  "tiles",
+  "layout_generation",
+  "sorted_keys",
+]

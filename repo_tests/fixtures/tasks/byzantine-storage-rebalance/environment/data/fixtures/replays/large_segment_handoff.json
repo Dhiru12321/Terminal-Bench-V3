@@ -1,0 +1,17 @@
+{
+  "name": "large_segment_handoff",
+  "checkpoints": [
+    {
+      "id": "wide0",
+      "rows": 1,
+      "cols": 2,
+      "values": [3.14, 2.71],
+      "segments_hex": [
+        "0011223344556677",
+        "8899aabbccddeeff",
+        "fedcba9876543210"
+      ]
+    }
+  ],
+  "events": [{ "type": "noop" }]
+}

@@ -1,0 +1,46 @@
+{
+  "scenario_id": "case_h",
+  "ops": [
+    {
+      "op": "put",
+      "key": "p",
+      "value": "old"
+    },
+    {
+      "op": "flush"
+    },
+    {
+      "op": "open_pin"
+    },
+    {
+      "op": "put",
+      "key": "p",
+      "value": "new"
+    },
+    {
+      "op": "open_pin"
+    },
+    {
+      "op": "obliterate",
+      "key": "p"
+    },
+    {
+      "op": "get",
+      "key": "p"
+    },
+    {
+      "op": "close_pin"
+    },
+    {
+      "op": "get",
+      "key": "p"
+    },
+    {
+      "op": "close_pin"
+    },
+    {
+      "op": "get",
+      "key": "p"
+    }
+  ]
+}

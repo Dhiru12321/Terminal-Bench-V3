@@ -1,0 +1,33 @@
+artifacts = [
+  "/app/output/reload_report.json",
+  "/app/output/probe_trace.json",
+]
+name = "nft-reload-mirage"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Systems"
+tags = ["nftables", "reload", "firewall", "runtime-debugging"]
+languages = ["rust"]
+difficulty = "advanced"
+expert_time_estimate_hours = 1
+difficulty_explanation = "The reload pipeline reports success from the committed generation while the live read lags behind it, so the report and the probe trace disagree only on scenarios that never converge."
+solution_explanation = "solve.sh separates the committed generation from the live-read endpoint so both surfaces publish the same figure and rejection stays visible on lagging rows."
+verification_explanation = "tests/test_outputs.py pairs reload_report.json against probe_trace.json for every file in /app/data/scenarios and requires one row each with aligned generations and booleans."
+relevant_experience = "nftables ruleset reload semantics and generation-counter debugging in Rust services."
+
+[verifier]
+timeout_sec = 450
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 3600
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 300
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240

@@ -1,0 +1,1242 @@
+---
+alwaysApply: false
+---
+# Project Terminus Task Creation Rules
+
+This guide covers how to create a valid Project Terminus / Harbor-style task from scratch.
+
+## Core Goal
+
+A good Terminus task should be solvable by an expert human, but challenging for current frontier AI coding agents.
+
+Tasks should test:
+
+- Multi-step reasoning
+- Environment interaction inside Docker containers
+- Debugging, configuration, development, and practical problem solving
+- Command chaining and handling intermediate states
+
+Avoid trivia, trick questions, one-liners, and tasks that only test memorization.
+
+## Construction-to-Spec: the primary authoring discipline
+
+This file is the construction specification for Step 2b. Everything in it is a rule you apply *while drafting*, not a reference you hope to have consulted. Every mechanical and review check that runs after Step 2b — `spec_satisfiability.py`, `scripts/run_static_checks.py`, `task_runtime_deps.py`, `actionability_check.py`, `no_hidden_contracts.py`, `obfuscation_lint.py`, dynamic smoke, `scripts/collapse_check.py` RC1-RC7, `@review-and-submit.mdc` §1-7, `@difficulty-calibration.mdc` Part A and Part B — examines something this file already documents. The expected outcome of a disciplined draft is **one-shot PASS through every check**, with the checks functioning as hallucination catchers, not design oracles.
+
+Before touching any file, internalize the full rule set:
+
+- **This file** — file layout, `instruction.md` shape and humanization, `task.toml` metadata, `output_contract.toml` contract, environment and verifier Dockerfile rules, `test.sh` template, `solve.sh` discipline, `test_outputs.py` structure, discoverability principles (file, knob, path).
+- **`@review-and-submit.mdc` §1-7** — the post-construction checklist. Every bullet is something you satisfy here, at construction.
+- **`@difficulty-calibration.mdc` Part A** — the collapse audit template. Design the task so the audit returns PASS on the first read (smallest plausible patch is *not* trivial, editable frontier is not 1-4 obvious files, requirement-to-file map is not 1:1, oracle LOC is substantive, no discoverability signals, no red flags, residual hardness is real).
+- **`@difficulty-calibration.mdc` Part B** — per-test feasibility risks. Avoid creating single-valid-approach, chain-dependent, order-sensitive, flaky, or niche-technique tests *while writing them*.
+
+The Step 2b runtime order is cheap and disciplined: spec satisfiability,
+static hygiene, runtime dependency check,
+actionability/hidden-contract/obfuscation/waiver lints, dynamic smoke when
+Harbor is available, then `scripts/collapse_check.py` as the hard
+leakiness gate, then final oracle 1x and NOP evidence. Step 2b is not complete
+until `check-task.sh` writes a fresh `.step2b-checksum` and final oracle/NOP job
+dirs exist. Dynamic smoke is an early signal only; it never weakens collapse
+and never substitutes for final Harbor evidence.
+
+For agent-run local gates, prefer `python3 scripts/task_gate.py
+tasks/<task-name> --strict --report-dir /tmp/tb3-gates --skip-harbor` over a
+long shell chain, then run `./scripts/check-task.sh --strict --report-dir
+/tmp/tb3-gates tasks/<task-name>` when the checksum sentinel is needed. Static
+hygiene on its own is `python3 scripts/run_static_checks.py --task-dir
+tasks/<task-name> --version terminus_3`; `terminus_3` is the only accepted
+ruleset version and the default, and `edition_2` is retired. Host
+Python is not task-container Python: if tests, solution scripts, or executable
+environment scripts invoke `python3`, the Dockerfile or verifier setup must
+provide it. `scripts/task_runtime_deps.py` checks this and is blocking under
+strict mode.
+
+Step 3b and Step 4 must use `scripts/step2b_ready.py` before review, 10x, or
+approval. Step 4 packages through `scripts/package_task.py --validate`; it does
+not create `.step2b-checksum`.
+
+### Collapse early-stop discipline
+
+Treat repeated `scripts/collapse_check.py` FAILs as structural evidence:
+
+- After 2 consecutive FAILs with the same root-cause set, stop local edits.
+- After 4 total FAILs, stop regardless of trajectory.
+- If remaining failures include RC2, CR1, CR8, or GX9 and the honest repair
+  would require changing paths, output schema, test contract shape, symbol
+  frontier, or instruction disclosure level, return to Step 2a for spec
+  amendment.
+
+On stop, emit a `Collapse Redesign Report` with: task/spec, collapse run count,
+stable failing checks, likely structural root cause, local patches already
+attempted, redesign options, whether spec amendment is required, whether a
+waiver might be legitimate, and commands run.
+
+Forbidden collapse repairs: whitespace padding to dodge GX9; string
+concatenation to hide symbols; `importlib`/`getattr` solely to avoid CR8;
+homoglyphs; decoy files purely to dilute RC2; helper renames solely to chase
+CR1; stripping externally tested requirements from `instruction.md` to satisfy
+GX9.
+
+Redesign menus: RC2 -> generic-rename package roots before freezing the
+manifest, move fix material into realistic common files, separate instruction
+nouns from path tokens, waive only realistic source-preserving names, avoid
+decoy dilution. GX9 -> observations/traces/measurements/artifacts/run records,
+derived comparisons, schema in `output_contract.toml`, fewer boolean answer
+keys, no padding or hidden behavior. CR1 -> symbol-thin oracle-touched files,
+sibling helpers,
+`co_resident_helpers`, natural inlining. CR8 -> honest orchestration split,
+reduced fix-symbol fanout, no import/string tricks. GX6 -> symptom causation
+is okay; patch causation is not; rewrite as observable behavior.
+
+### RC1-RC7 as construction constraints
+
+`scripts/collapse_check.py` checks seven root causes. Each maps to a specific construction rule:
+
+| RC  | Rule                   | Construction-time constraint                                                                                                                                  |
+|-----|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| RC1 | Oracle simplification  | `solve.sh` must add logic, not just delete/revert. If the "fix" is `sed -i '/BUG/d'` or reverts a flag, the task is trivial — redesign at the spec level.    |
+| RC2 | Oracle predictability  | File, directory, and test names must not encode the contract. No `broken_*`, `buggy_*`, `fix_me_*`, `golden_*`, `expected_*` tokens in solver-visible surfaces. |
+| RC3 | Verifier shallowness   | Tests assert domain-correct computed values, not format/schema/existence alone. Every explicit prohibition in `instruction.md` has a direct test that catches violations. |
+| RC4 | Tamper surface         | Tests do not depend on files the agent can rewrite to bypass domain reasoning. Expected values live in test code, not in "golden" files under `environment/`. |
+| RC5 | Reference artifacts    | No answer-shaped golden/reference/broken fixtures on solver-visible surfaces (`instruction.md`, `tests/`, `environment/`). Embed expected values in test code. |
+| RC6 | Instruction specificity| `instruction.md` stays symptoms-only about the implementation patch. Disclose externally tested schemas/invariants/formulas/types/sizes/profile constants, but do not disclose algorithm names, implementation-internal schema dumps, CLI flag lists, patch-selecting thresholds, file/function locations, cause statements, recipes, or binding phrases. |
+| RC7 | Oracle triviality      | `solve.sh` non-boilerplate LOC ≥ 30 (≥ 80 is comfortable). If the genuine fix is <30 LOC, the task is too simple — redesign the concept, do not pad.         |
+
+RC6 catches the over-specification direction (instruction names the fix). The under-specification direction (instruction points at a hints file under `environment/`) is governed by Instruction honesty rule 4 — see the "Instruction prose rules" section below.
+
+Construction is spec-aware, not spec-discovering. While writing each file, pre-validate against the rules relevant to that file. If a rule would force you off the authoring spec's design, revise the draft — the rule is from a constraint the spec already assumed.
+
+### Fix-surface construction rules (CR1-CR7)
+
+RC1-RC7 catch structural collapse. CR1-CR7 catch **fix-surface telegraphing**: the code-level signals that let a frontier reader identify the fix site from the file tree alone, before reading any bodies. A draft can pass every RC and still collapse because the drafter picked a clean name for the decision function and filed it in a directory named after the task's core concept. These rules close that channel.
+
+Every CR rule below is enforced mechanically by `scripts/collapse_check.py` and traces back to a specific observed trivialization mode in the Apr 2026 audit (5 of 10 shipped tasks trivialized because of signals these rules now catch).
+
+| CR  | Rule                       | Construction-time constraint                                                                                                                                                      |
+|-----|----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| CR1 | Symbol-table compliance    | The authoring spec's `symbol_table` names every symbol the oracle touches. Use those names verbatim — do not rename, do not relocate, do not introduce new top-level symbols on the fix path outside the table. |
+| CR2 | Flipping-point contract    | The authoring spec's `flipping_point_contract` names ≥3 fix locations and specifies the test-subset each location controls. The built task must satisfy this contract: reverting any single location must flip only its declared test subset. No single location may flip a majority of tests. |
+| CR3 | Signature opacity          | Parameter names on the fix path must not lexically or semantically match instruction nouns. Use opaque identifiers (`a`, `b`, `c`; `primary`, `secondary`; `state_x`, `state_y`) or positional parameters. Function signatures on the fix path must not encode the instruction's abstraction (e.g. three parameters named after the three authorities the instruction discusses). |
+| CR4 | No literal scenario values on fix path | No string or integer literal that matches a scenario-controlled value may appear in any function body on the fix path. All such values must arrive via parameters, config reads, or state reads. A `"v3"` literal in a function that should respect the active version is a direct tell. |
+| CR5 | No shadow-pair files       | No two files in the visible codebase may contain function definitions with matching names AND matching or near-matching bodies (≥80% AST similarity). Parallel-package telegraphs (e.g. `pkg_a/choice.py::pick_lineage` and `pkg_b/choice.py::pick_lineage` with identical bodies) let the agent triangulate the fix site from the symbol alone. |
+| CR6 | No intent comments on fix path | Comments on files the oracle touches may describe mechanics ("sort ascending", "open in binary mode") but must not describe **intent** or **invariants** ("ensures canonical authority survives churn", "required for correct precedence"). Intent comments narrate the fix to the agent. |
+| CR7 | Grep-resistance            | No function name, top-level class name, parameter name, or path token on the fix path may appear verbatim in `instruction.md` as a noun. Drafter extracts every noun from the instruction, then greps the fix-path symbols — any match is a FAIL. |
+| CR8 | No central orchestration of fix-path symbols | No single visible file may reference (call, import, or name) more than 2 symbols declared in the authoring spec's `symbol_table`. An orchestrator that exposes the full fix-site call graph in one file (e.g. a `harness/driver.py` that invokes every fix-path function across every scenario) gives the agent the entire fix structure for free. Distribute orchestration across scenario-specific entry points. Apr 2026 `enum-packing-split` post-mortem: 155-LOC `harness/driver.py` called every opaque fix symbol and rendered code-side opacity irrelevant because the driver WAS the spec. |
+| CR9 | Test-contract traceability | Every string literal, field name, and required value that `tests/test_outputs.py` asserts against must either (a) appear in `instruction.md`, or (b) appear in a code stub/signature/docstring visible to the solver BEFORE applying the fix. Tests must not introduce requirements that have no home anywhere in the visible system. Example failure: test requires `view['norm_token'] == view['digest_hex'][:8]` but neither the instruction nor any pre-fix code stub mentions `norm_token`. The solver has nowhere to learn the contract, so the test is a hidden spec — and 100% of trials fail the same test uniformly (not because the task is hard, because it's broken). |
+
+**Why these are construction-time rules, not post-draft fixes.** Retrofit renames break RC1 (oracle simplification) because the drafter ends up redesigning `solve.sh` to match new names. Retrofit decoy-insertion breaks RC3/RC4 because decoys that don't do real work end up as answer-shaped fixtures. The rules must be followed during first draft, not cleaned up after.
+
+**The symbol table is the primary handoff.** The authoring spec's `symbol_table` and `flipping_point_contract` are not suggestions — they are the construction manifest you fill in. If the spec's table doesn't exist or is underspecified, return to Step 2a rather than inventing the names yourself. Drafter-invented names are the dominant source of CR1/CR3/CR7 failures.
+
+The construction manifest should also preserve the authoring spec's
+`reference_pattern` so reviewers can audit the calibration path after files
+exist. Use either `reference_task_id` for a promoted reference or
+`justification_if_none`; do not point at promotion candidates as though they
+were references.
+
+### Instruction prose rules (separate from code-side opacity)
+
+CR1-CR9 govern the **code**: symbol names, file topology, comments, test-to-code traceability. The **instruction** is governed by RC6 (specificity) plus one additional rule whose absence drove the Apr 2026 `enum-packing-split` post-mortem:
+
+**Instruction honesty.** `instruction.md` must be a complete, readable specification of the system's contract at the symptoms-only level. Three concrete requirements:
+
+1. **An expert reading only `instruction.md` must be able to verify from the solver's output alone whether a solution is correct.** If `tests/test_outputs.py` asserts `view['norm_token'] == view['digest_hex'][:8]`, either `instruction.md` states this relationship or a solver-visible code stub documents it. CR9 enforces this mechanically.
+
+2. **Standard domain language, not synthetic jargon.** Terms like "live-read path," "reread-from-disk path," "post-rebuild cleanup" are fine — they are real distinctions a systems engineer recognizes. Terms like "outward slot strings," "material value," "wire family," "barrier view," "durable frontier" are made-up vocabulary that forces the agent to decode from code rather than from the spec. If a term would need a glossary for a domain expert to understand it, replace it with the standard term.
+
+3. **Synthetic data tokens are OK if the instruction names them explicitly.** "The first row maps to `Acme-Crate`, the second to `Beta-Tote`, the third to `Delta-Bin`" is specification. Embedding those values in tests without naming them in the instruction is hidden-spec and CR9 FAILs it.
+
+4. **No instruction by reference.** Every operational fact a solver needs to run the system — the entrypoint command, environment variables required to invoke it, the input/output paths, the schema of the output object — must live inline in `instruction.md`. Pointing the solver at a `.txt`, `.md`, `README`, `hints`, or `notes` file under `environment/` and saying "follow the instructions there" is the same defect as a short instruction with the contract hidden in test code: the solver-visible system no longer has a single source of truth. The dishonest variant often hides behind length-cap reasoning ("instruction.md is getting too long, move the mechanics elsewhere"). Instruction by reference is not a length-cap workaround — it is a `task-creation.mdc` Instruction honesty rule 4 violation. If `instruction.md` would otherwise exceed the static-check length WARN band, accept the WARN with reviewer documentation rather than splitting the contract across files. Files under `environment/` may contain *implementation hints* the solver discovers (a docstring on a function explaining its expected behavior, a comment in a config file, a `README.md` describing one subsystem's responsibility) — those are part of the codebase the solver reads to diagnose the bug. They must not contain the *operational contract* (how to run the system, what output to produce, what the output schema is) that belongs in `instruction.md`.
+
+   The diagnostic test for instruction by reference: if a fresh solver had only `instruction.md` and the `environment/` source code (no `.txt`/`.md` hint files at all), could they figure out how to run the system and produce the expected output? If no, the operational contract is split. Move it back into `instruction.md`.
+
+5. **No hidden tested invariants.** For every helper assertion in `tests/test_outputs.py`, especially shared helpers called by multiple tests, identify the behavior it enforces and ensure that behavior has a solver-visible home in `instruction.md`, a referenced contract doc, or a visible code/docstring stub. A test helper like `_assert_slice_matches_live()` that enforces a storage invariant in most scenarios cannot be "just verifier glue"; its invariant must be documented somewhere the solver can discover. If documenting it in `instruction.md` would make the task too prescriptive, put the observable contract in a normal environment doc or code stub without naming the fix location.
+
+**What "instruction honesty" does NOT mean.** It does not mean naming the fix location — that is a RC6 violation. It does not mean listing algorithm names or implementation details — those are RC6-forbidden. Honest means "anyone reading this can verify correctness from the output"; it does not mean "anyone reading this can infer the fix site."
+
+The `code_forbidden_tokens` field in the authoring spec's construction manifest applies to **code symbols only**. It does not restrict instruction vocabulary. A drafter who sees `code_forbidden_tokens: [lineage, authority, precedence]` and writes an instruction avoiding all three words has misread the rule — the instruction may use those words freely; only the code symbols on the fix path must avoid them.
+
+### Don't cheat the difficulty contract through `instruction.md`
+
+`instruction.md` cheating happens in two opposite directions, and both produce the same downstream collapse: the difficulty rating becomes a measurement of the prose, not of the engineering work. Hard tasks are hard because the WORK is hard — finding bugs, designing fixes, debugging cross-component invariants — not because the instruction is over-helpful or deliberately obscure. The Apr 2026 second-batch post-mortem on `counter-restore-replay`, `slot-lineage-drift`, `key-ring-alias`, and `staple-cache-shadow` made each direction concrete:
+
+**Direction 1 — Make-it-easy by reciting the test contract** (drives tasks toward trivial / easy):
+
+- *Answer recital* — `counter-restore-replay`'s instruction listed every test triple verbatim ("sk_skew_pair shows 10 in ingress_epoch and 10 in after_first_epoch"). The agent didn't need to read env code at all. The mechanical gate **GX9** measures this: it harvests every test assertion `obj[KEY] OP VALUE`, then checks whether the instruction enumerates the (scenario, key, value) triple within a 400-char window. FAIL above 50% saturation. If you find yourself writing per-row expected values into the instruction, you are reciting the answer key — describe the OBSERVATION instead and let the agent compute the value from env behavior.
+
+**Direction 2 — Make-it-look-hard by obfuscating the contract** (drives tasks toward easy because agents fail on instruction-comprehension, not engineering):
+
+- *Polarity contradiction* — `staple-cache-shadow`'s instruction said `rho_reuse keeps reuse_gate allow with handoff_u at or below eleven for the numeric climb window, ending on deny past that band`, while tests asserted `reuse_gate == "deny"` AND `handoff_u <= 11`. The literal reading of the prose contradicts what the tests demand. The mechanical gate **GX10** catches this with a closed list of polarity pairs (allow/deny, true/false, set/unset, clean/stale, ok/broken, healthy/broken, accept/reject, valid/invalid, …) — when the instruction's window for a test field contains both polarities within 30-200 chars of each other in the same sentence (no `.`, `;`, `?`, `!` or paragraph break between), it FAILs. If a binary field has different polarities across scenarios, separate them into different sentences/paragraphs so the scope is unambiguous.
+
+- *Value over-specification* — `slot-lineage-drift`'s instruction said "fused_stride shows two then six on the gate-local slices, twelve then eleven followed by twenty then seven on the ordering pair" — four numbers for two fields (b1, b2) with no per-row anchor. Agents picked the wrong assignment. **GX9 catches this incidentally** (saturation hits 100% via every-value-somewhere coverage), but a future author who lists fewer values could slip through. **Reviewer rule**: any time the instruction lists numeric or string values for a test field, each scenario must get at most one named value AND the binding to the scenario-ID must be unambiguous from prose alone. If you cannot point at one sentence and read off `(scenario_X, field_Y) = value_Z`, the instruction is over-specifying.
+
+- *Undefined metaphor jargon* — `key-ring-alias`'s instruction used coined noun phrases with no env anchor: `in-process lane`, `outward-only probes`, `materialize hop`, `durable slice`. The agent had no way to map these to code constructs. The judge's verdict was *"the critical requirement … is buried in cryptic language."* This is the same failure as point 2 of "Instruction honesty" above (synthetic jargon), and there is **no reliable mechanical gate** for it — naive unanchored-content-word fraction catches genuine hard tasks at the same 50-80% rate as obfuscated ones. **Reviewer rule**: for every multi-word noun phrase used to refer to a code construct or system part, confirm that *at least one of the words* appears in env code, env paths, or env file contents. If the entire phrase is coined English with zero env touchpoint, replace it with vocabulary drawn from the codebase.
+
+The four modes are detailed in `difficulty-calibration.mdc` section A24 with worked examples. The mechanical gate (GX9, GX10) closes the easily-gameable holes on direction 1 and the contradiction sub-mode of direction 2. The remaining sub-modes of direction 2 are reviewer responsibility — a task that passes all 23 mechanical checks can still violate the honest-instruction principle on the value-over-spec or metaphor-jargon axis, and the reviewer must catch those before submission.
+
+## Start from the Correct Skeleton
+
+Terminus 3 has exactly one task shape. Use the official task skeleton from the
+Slack resources tab, or the repo's `default-template/`, which already carries
+the separate-verifier layout. The old milestone and UI skeletons do not apply:
+milestone tasks were removed from the edition, and frontend work is now an
+ordinary task under `Software` / `Frontend`.
+
+Folder names should use kebab-case:
+
+Good:
+
+- `parse-json-logs`
+- `debug-python-import`
+- `configure-nginx-ssl`
+
+Bad:
+
+- `task1`
+- `my-task`
+- `test`
+
+## Before Writing Any Code
+
+Ask for ALL missing required fields BEFORE writing code:
+
+1. **Task Idea**: What problem should the agent solve?
+2. **Programming Language**: What language(s)? Tiers are language-independent — Python is as acceptable as any other language.
+3. **Difficulty Tier**: `frontier`, `advanced`, `core`, or `base` — see "Difficulty tiers".
+4. **Category / Subcategory**: exactly one of each, Title Case, from the taxonomy table under "Category taxonomy".
+5. **Task Name**: kebab-case (e.g., `distributed-trace-analysis`)
+
+Fixed values: `author_name = "anonymous"`, `author_email = "anonymous"`.
+
+## Acceptance Gates
+
+- Difficulty is empirical, not self-assessed. It is the average pass@1 across 8 runs — 4 per model, over GPT-5.6 and Claude Opus 5.
+- Pass rates above 80% are NOT rejected; that band is the `base` tier. What is rejected is 100% averaged across both models — a task every run solves produces no signal. One model going 4/4 is fine as long as the other fails at least once.
+- Tiers are language-independent. The Edition 2 rule that Python tasks had to be hard no longer applies.
+- Environment file count is a realism signal, not evidence of hardness. Include the supporting modules, data, configs, or headers the task genuinely needs — do not pad with filler files.
+- Avoid FastAPI.
+
+### Difficulty tiers
+
+| Tier | Measured accuracy |
+|---|---|
+| `frontier` | < 20% |
+| `advanced` | 20% – < 50% |
+| `core` | 50% – < 80% |
+| `base` | 80% – < 100% |
+
+Tier values are lowercase in `task.toml`. `easy`, `medium`, and `hard` are
+retired Edition 2 names and FAIL the static check. While iterating, the
+in-platform gate runs 4 trials (2 per model) and at least one must fail; the
+8-run measurement that fixes the recorded tier happens after reviewer
+acceptance, so the tier you see while building is provisional. Failures caused
+by unclear instructions, environment defects, or flaky tests are bugs, not
+difficulty — fix them and re-measure.
+
+## Task types the edition removed
+
+- **Milestone tasks are gone.** Terminus 3 removed them entirely: no `steps/milestone_N/`, no `[[steps]]`, no `number_of_milestones`, no `TestMilestoneN`, no `solveN.sh`. There is no grandfathered path and no in-flight exemption; `scripts/run_static_checks.py` FAILs any task that still carries the layout.
+- **The `ui_building` subtype is gone.** Frontend work is category `Software`, subcategory `Frontend`, built as an ordinary task with the ordinary pytest verifier. There is no separate UI test template.
+- **The Edition 2 flat category names are gone.** `software-engineering`, `debugging`, `data-processing`, and the rest of that list are not values any more. Choose the category and subcategory that describe the task's domain — see "Category taxonomy".
+- We are NO LONGER accepting new **multi-container** tasks in this repo. Single-container is the default; `[metadata].is_multi_container` exists only for the multi-container tasks already in flight.
+
+This applies to construction (Step 2b) and to idea validation (Step 2a) — when validating an idea that would naturally land as multi-container, the right move is to redesign or reject rather than carry it forward.
+
+## Task originality — no templated tasks
+
+Each task you create and submit must be **substantively different** from your prior submissions — not a reskin of the same scaffold.
+
+**Not allowed:**
+- Reusing the same structure, solution approach, or test patterns with only keyword or instruction swaps
+- Plug-and-play changes across otherwise near-identical tasks
+- Surface-level variation that leaves the underlying problem, oracle path, and verifier shape unchanged
+
+**Required:**
+- A meaningfully distinct problem domain, failure mode, or investigative journey
+- Genuine variety in environment topology, coupling, and verification strategy — not just renamed files or reworded symptoms
+
+Simply changing key words in `instruction.md` does not count as a new task. Templated submissions are rejected and may constitute removal from Project Terminus. This applies at Step 2a (reject before drafting) and at review/submit.
+
+## File Layout
+
+### Required structure
+
+```text
+your-task-name/
+├── instruction.md
+├── task.toml
+├── output_contract.toml          # TB3 repo-local authoring metadata; excluded from zip
+├── environment/
+│   ├── Dockerfile                # or docker-compose.yaml for multi-container
+│   ├── .dockerignore             # required for non-trivial environments
+│   └── data/                     # bundled inputs, fixtures, configs
+├── solution/
+│   └── solve.sh
+└── tests/
+    ├── Dockerfile                # builds the separate verifier image
+    ├── test.sh                   # verifier entrypoint
+    └── test_outputs.py           # pytest assertions
+```
+
+Rules:
+
+- Put all task files in one directory.
+- `tests/Dockerfile` is required. The verifier is built from it and runs in its own container the agent cannot reach.
+- Never copy `solution/` or `tests/` into the environment image.
+- Do NOT author `rubrics.txt` or `README.md`. Snorkel generates both at packaging — the rubric from the platform submission UI, the README from `task.toml`'s explanation fields. Either file at the task root FAILs `scripts/run_static_checks.py --only task_structure` and the zip validator.
+
+## instruction.md
+
+The instruction prompt should sound like a realistic human request to a terminal coding agent.
+
+Rules:
+
+1. Be concise.
+2. Be well specified.
+3. Be interesting.
+4. Do not give answers or hints.
+5. Be unique.
+6. Use absolute paths.
+
+Good:
+
+```md
+The SQLite migration in `/app/migrations` is failing after the latest schema change. Fix the migration flow so the existing tests pass and the app can start with both a fresh database and the provided legacy database snapshot.
+```
+
+Bad:
+
+```md
+You are an expert programmer. First run ls, then open the migration file, then change column X to Y, then run pytest.
+```
+
+Avoid:
+
+- Step-by-step walkthroughs
+- Hints sections
+- Exact solution values
+- Overly prescriptive function names unless required
+- Excessive bullets and markdown
+- Bold markers that highlight solution details
+- Vague phrasing like "make it better" or "fix issues"
+
+### Core principles
+1. **Concise** — write a natural accepted-task-style prompt with compact, human prose.
+2. **Well-specified** — Goal must be clear. Not hard via hidden edge cases.
+3. **Interesting** — Real-world value to some group of developers.
+4. **No hints** — Give the **what**, not the **how**. No solution steps.
+5. **Unique** — Distinct from TB2, TB3, and Snorkel Edition 1.
+6. **Absolute paths** — Use `/app/output.txt`, never `./output.txt`.
+
+### Public instruction style
+
+`instruction.md` should read like a natural human task prompt. It may be
+written as concise paragraphs, a title plus `Requirements`, or another
+accepted-task-style format. The bug-report checklist is for author planning
+only; public headings are optional.
+
+Internal author checklist:
+
+- Short problem, symptom, or required behavior statement.
+- Concrete command or entrypoint when the verifier reruns one.
+- Output path and schema when externally tested.
+- Exact formulas, types, sizes, constants, profile labels, and argument splits
+  when externally tested.
+- Input/output behavior and edge cases.
+- Source-fix requirement when source under `/app/environment` must be fixed.
+- Regenerated-output rule when tests delete or rerun output generation.
+- Subsystem-level or directory-level orientation without exact patch
+  files/functions unless category profile allows it or a waiver is approved.
+- One natural sentence rejecting static output writes, test edits, bypassing
+  the pipeline, wrapper-only changes, or other known decoys when relevant.
+
+Public instructions should avoid mandatory six-heading verifier checklists,
+internal phrases like "What the verifier checks" unless natural for the task,
+scenario->field->expected boolean answer tables, exact patch files/functions/
+lines, metaphor-only requirements, hidden contracts, and wording that makes a
+source-fix task sound output-only.
+
+Examples:
+
+- Good source-fix wording: "Fix the source under `/app/environment` so the
+  report is regenerated by the normal pipeline."
+- Bad write-output wording: "Write the expected JSON to `/app/output/report.json`."
+- Good subsystem-level scope: "Start in the reconciliation and checkpoint
+  loading code under `/app/environment`."
+- Bad exact patch recipe: "Edit `environment/reconcile/merge.py` and change
+  `merge_window()` to sort by generation."
+- Good formula/schema disclosure: "Each record reports `drift = observed -
+  baseline` as a number and includes the profile name that produced it."
+- Bad hidden-test-only formula: "The tests know how to calculate drift; just
+  make the hidden cases pass."
+
+### Humanization rules
+
+Write like a real engineer prompting Cursor or Claude Code, not like an LLM writing a benchmark. Avoid the "GPT-style" of writing — verbose, repetitive, overly polite, exhaustively formatted.
+
+**These rules are the construction-time version of RC6 (instruction specificity). Every signal listed below is also something `scripts/collapse_check.py` RC6 or `scripts/instruction_audit.py` will detect — satisfy them here so those checks pass on first run.**
+
+Remove these synthetic smells:
+- Roleplay boilerplate ("You are an expert programmer…")
+- Step-by-step walkthroughs that give away the approach
+- Gratuitous verifier-centric phrasing when a natural task sentence would do
+- Redundant context restating the same requirement multiple ways
+- Over-formatted public checklists that make the task read like an internal verifier plan
+- Hint leakage naming the exact algorithm or broken file
+- Prescribed implementation scaffolding — exact function signatures, exact file layouts, named libraries, or named build commands when the agent should be figuring those out. Specifying the contract an output must satisfy is fine; specifying the code shape that produces it is a hint.
+- Emojis and decorative unicode. Scattered bold markers on solution-adjacent phrases ("**Policy limit**: $500") also count — they telegraph where the answer is.
+
+RC6 signal families to explicitly avoid (each triggers the mechanical check):
+- **Named algorithms** — "CRC32", "HMAC-SHA256", "AES-GCM", "Kahan summation", "two-pointer", "backtracking" → describe what the output must be, not how to compute it.
+- **Implementation-internal schema enumerations** — listing every internal key, storage shape, or private config knob that selects the patch. Public output schemas and verifier-checked record types belong in natural contract prose or a `Requirements` section; internal implementation schemas do not.
+- **API/CLI enumerations** — listing every flag, subcommand, or method signature. Describe the observable behavior; let the agent discover the interface.
+- **Patch-selecting thresholds** — "tolerance 1e-6", "must converge in 50 iterations", "block size 4096" when those values reveal the implementation strategy. Public sizes, profile constants, argument splits, and externally tested formulas are allowed when they are part of the user-visible contract.
+- **Binding phrases for the solution path** — "you must edit", "the algorithm is", "the fix is", "change X to Y" → replace with descriptive language about observed behavior. Binding phrases that define a public output formula or schema are allowed when the verifier tests that contract.
+- **Scope closures** — "and nothing else", "only these fields", "exactly these steps" → these lock the agent into the oracle's exact approach; allow multiple valid approaches.
+- **File/function locations** — "edit `src/parser.c` line 42", "modify `parse_header()`", "the bug is in the token-counting loop" → describe the symptom, not the location.
+- **Cause statements** — "because the hash is truncated", "this is caused by signed overflow" → describe what's observed, not what's responsible.
+
+In public instruction prose, replace verifier-checklist wording with:
+- Direct problem statement
+- Desired end state and required outputs
+- Key constraints only
+- Short prose or a small bullet list when it genuinely helps readability
+
+Vary the style across tasks. Some should be terse paragraphs, some can use a
+short `Requirements` section, and some can include a small pasted failure. A
+compact human-voiced prompt is usually better than 500+ words of structured
+documentation. Do not copy the wording of a previously-approved task's
+instruction. The instruction-test vocabulary check
+(`scripts/run_static_checks.py --only instruction_test_vocabulary`) verifies
+that whatever voice you pick, every exact-value assertion in tests is grounded
+in instruction.md text.
+
+### Contract requirements
+- List ALL user-visible outputs declared in `output_contract.toml`
+- If structured data output, document the exact schema declared in `output_contract.toml`, including field names, types, and keys
+- Do NOT surface `internal_harness_files` in instruction.md unless the same path is also declared in `user_visible_outputs`; `scripts/run_static_checks.py` enforces this literal path rule
+- Do not mention specific tools unless the verifier can prove tool usage
+- Do not include the task name or legacy canary strings
+
+## task.toml
+
+Every task must include a valid `task.toml`.
+
+**Construction-time constraints this section enforces.** `task.toml` is validated by `scripts/run_static_checks.py --only task_toml` and related checks. The rules below are all enforced:
+
+- Descriptive fields live under `[metadata]`. A top-level copy is silently ignored by the platform structure check, so a field that appears only at the top level reads as present locally and missing upstream.
+- `artifacts` is top-level. Nesting it under `[verifier]` raises no error — the value is silently dropped and the verifier receives nothing.
+- Every path in `artifacts` needs its parent directory created in `tests/Dockerfile` (`RUN mkdir -p …`). Harbor's artifact upload fails without it, and the failure looks like a broken test.
+- Exactly one `category` and one `subcategory`, Title Case, matching the taxonomy table below.
+- 3-6 `tags`, no filler padding
+- `difficulty` is a measured tier: `frontier`, `advanced`, `core`, `base`. The Edition 2 names FAIL.
+- `[verifier].environment_mode = "separate"`; `[verifier].timeout_sec` between 120 and 18000
+- `[agent].timeout_sec` ≥ 1800 (the floor, not the cap) and ≤ 18000; most tasks land 3600-5400
+- `timeout_coherence`: `verifier.timeout_sec ≥ environment.build_timeout_sec` when `tests/` invokes a build step, and ≥ 2x that when tests drive three or more build sites
+- `[environment]` must declare `network_mode`, `build_timeout_sec`, `cpus`, `memory_mb`, `storage_mb`. `gpus > 0` FAILs — Terminus 3 tasks must not require a GPU.
+- Retired keys FAIL: `codebase_size`, `number_of_milestones`, `subcategories`, `allow_internet`, `junior_time_estimate_min`, `expert_time_estimate_min`, `custom_docker_compose`. A top-level `version` is a WARN — the Terminus 3 skeleton has none.
+- Do NOT use `schema_version`, a top-level `[task]` block, or Harbor-framework-only fields (`min_reward`, `multi_step_reward_strategy`, `workdir/setup.sh`). These are not part of our convention even when the wider framework supports them.
+
+Schema:
+
+```toml
+artifacts = ["/app/output/report.json"]        # top-level; the only paths the verifier ever sees
+name = "your-task-name"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"                          # exactly one, Title Case
+subcategory = "Databases"                      # exactly one, valid for that category
+tags = ["sqlite", "wal", "recovery", "storage-engine"]   # 3-6 descriptive values
+languages = ["python"]
+difficulty = "advanced"                        # measured tier, lowercase
+expert_time_estimate_hours = 6
+difficulty_explanation = "The core crux an agent has to get right."
+solution_explanation = "How the oracle solves it."
+verification_explanation = "How the verifier decides the task was solved."
+relevant_experience = "The background that qualified you to author this task."
+
+[verifier]
+timeout_sec = 1800            # Raise to ≥ build_timeout_sec if tests/ invokes cmake / cargo / go build / make / npm install / pip install from source. `scripts/run_static_checks.py --only timeout_coherence` enforces that floor and the 18000s ceiling. If the verifier needs more, cut verifier-side work (cache builds between scenarios, parallelize, split the matrix) rather than arguing for a bigger budget.
+environment_mode = "separate" # always; grading happens in an isolated container
+
+[agent]
+timeout_sec = 3600            # 1800 floor, 18000 ceiling; most tasks land 3600-5400
+
+[environment]
+network_mode = "public"       # default
+build_timeout_sec = 900
+cpus = 2
+memory_mb = 8192
+storage_mb = 10240
+```
+
+Required fields:
+
+| Field | Rule |
+|---|---|
+| `artifacts` | **Top-level** array of absolute container paths the separate verifier reads from the agent's final environment. Never nest it under `[verifier]`. |
+| `name` | Task name; resolves top-level or under `[metadata]`. Keep it identical to the task directory name. |
+| `[metadata].author_name` / `.author_email` | Required; `"anonymous"` allowed |
+| `[metadata].category` / `.subcategory` | Exactly one of each, Title Case, from the taxonomy |
+| `[metadata].tags` | 3-6 free-form keywords — tools, libraries, techniques, subtopics |
+| `[metadata].languages` | Primary implementation language(s); domain toolchains stay in the environment |
+| `[metadata].difficulty` | `frontier`, `advanced`, `core`, or `base` |
+| `[metadata].expert_time_estimate_hours` | Positive number of hours to author the task |
+| `[metadata].difficulty_explanation` | What makes the task hard — the crux an agent has to get right |
+| `[metadata].solution_explanation` | How the oracle solves it |
+| `[metadata].verification_explanation` | How the verifier decides the task was solved |
+| `[metadata].relevant_experience` | The background that qualified you to author the task |
+| `[metadata].is_multi_container` | Optional; `true` only when the task runs multiple containers |
+| `[verifier].timeout_sec` / `.environment_mode` | Verifier budget; `environment_mode` is always `"separate"` |
+| `[agent].timeout_sec` | 1800 floor, 18000 ceiling |
+| `[environment].network_mode` | `"public"` (default) or `"no-network"` |
+| `[environment].build_timeout_sec` | Image build budget |
+| `[environment].cpus` / `.memory_mb` / `.storage_mb` | No GPU; ~2 cores, ~8 GB memory, ~10 GB storage |
+
+The four explanation write-ups are the only place this reasoning gets recorded:
+Snorkel assembles the packaged `README.md` from them, so there is no second
+document to write. Short stubs draw a WARN.
+
+**`network_mode`:** `"public"` is the default — use it unless you have a
+specific reason not to. Pick `"no-network"` only when the task does not make
+sense to complete with internet access, for example when network access would
+let the agent retrieve the answer instead of doing the work. Either way every
+dependency is baked in at build time: the agent's runtime deps in
+`environment/Dockerfile`, the verifier's (`pytest`, `pytest-json-ctrf`, and any
+extra verifier-only wheels) in `tests/Dockerfile`. `tests/test.sh` only runs
+`python -m pytest`. `"public"` exists for the task's own work, not as a
+substitute for a complete image.
+
+Keep author placeholders anonymous (`"anonymous"`, or the skeleton's
+`"your-name"` / `"your-email"`). Do not substitute real author identifiers.
+
+### Category taxonomy
+
+Each task carries exactly one `category` and exactly one `subcategory`, both
+Title Case and matching this table exactly.
+
+| Category | Subcategories |
+|---|---|
+| `Science` | `Biology`, `Chemistry`, `Physics`, `Earth`, `Robotics`, `Math`, `Linguistics` |
+| `Software` | `Algorithms`, `Systems`, `Databases`, `Data engineering`, `Frontend`, `Languages` |
+| `ML` | `Training`, `Inference`, `Evaluation`, `Kernels` |
+| `Operations` | `Finance`, `Logistics`, `Supply chain`, `Claims`, `Compliance`, `Marketing` |
+| `Security` | `Cryptography`, `Reverse engineering`, `Forensics`, `AppSec` |
+| `Hardware` | `CAD`, `RTL` |
+| `Media` | `Music`, `Design` |
+
+```toml
+[metadata]
+category = "Science"
+subcategory = "Chemistry"
+```
+
+Pick the category describing the **domain the task lives in**, then the
+subcategory describing the specific work. The common mistake is defaulting to
+`Software` because the task involves writing code — nearly every task does. Ask
+what the agent has to understand to get this right: a task that debugs a
+training loop is `ML` / `Training`, not `Software` / `Systems`; a task that
+parses mass spectra to infer a molecular structure is `Science` / `Chemistry`,
+not `Software` / `Algorithms`. Reserve `Software` for tasks where software
+engineering itself is the subject matter. If a task genuinely spans two
+categories, choose the one whose domain knowledge the agent cannot succeed
+without.
+
+`ML` / `Kernels` is authorable without a GPU: either a CPU-simulated kernel
+whose numerical output the verifier checks against a reference, or compile-only
+verification where the verifier checks that the kernel builds and passes
+structural checks without executing it on device.
+
+### Recurring task shapes
+
+The Edition 2 `subcategories` labels are retired and the field FAILs the static
+check, but the design constraints they carried still apply whenever a task
+takes one of these shapes:
+
+- **Long-context.** The document must genuinely require semantic understanding — at least ~50k tokens, and not solvable by keyword search or programmatic parsing. PDF, DOCX, Markdown, TXT, HTML dumps, JSON/YAML schemas, CSVs with metadata, chat logs, and email threads all work.
+- **Tool-specific.** Specialized tools where models underperform (FFmpeg, ImageMagick, Graphviz, MLFlow, WandB, Prefect, Superset, GIMP, QGIS, Blender) are good material.
+- **API interaction.** The API source must live in the environment and be mocked locally inside Docker. No live external APIs; the agent interacts through the terminal only. Avoid overusing FastAPI.
+- **Database interaction.** The task should require direct interaction with a database engine and not be solvable by reading the raw data files. Flat-file CSV "databases" should be a minority of DB tasks.
+
+For multi-container tasks, the harness discovers `environment/docker-compose.yaml`
+on its own — nothing in `task.toml` points at it. Set `[metadata].is_multi_container = true`
+when the compose file defines more than one service, and omit the field
+otherwise.
+
+**NOTE:** New multi-container tasks are NOT being accepted in this repo — see "Task types the edition removed".
+
+### Rubrics
+
+Rubrics are generated and edited in the platform submission UI, not inside the
+task folder. Snorkel adds `rubrics.txt` to the packaged task at packaging time;
+a copy at the task root is rejected.
+
+Rules:
+
+- Do not accept the synthetic rubric as-is.
+- Refine it into a task-specific diagnostic tool.
+- Use agent logs to identify failure modes.
+- Perfect scores should be rare.
+- Do not include generic "ran pytest" criteria unless the task is specifically about testing.
+- Do not include meta-checks like "Agent read instruction.md".
+
+Scoring:
+
+- Positive criteria total 10–40 points.
+
+Negative criteria:
+
+- Include at least three distinct negative criteria.
+- Use `-1`, `-2`, `-3`, or `-5`.
+
+Strict format:
+
+- Every line starts with `Agent`.
+- Every line ends with comma plus score.
+- Allowed values: `±1`, `±2`, `±3`, `±5`.
+- Never use `4`.
+
+Example:
+
+```text
+Agent verifies the migration against both the fresh and legacy database snapshots, +3
+Agent edits files outside `/app` or reserved framework directories, -5
+```
+
+**Rubric minus sign:** negative scores must use ASCII **`-`** (hyphen-minus, U+002D), not Unicode **`−`** (U+2212) or other dash characters.
+
+See `TASK_PROPOSAL_RUBRIC.md` for additional line-item rubric authoring rules.
+
+## output_contract.toml
+
+Every task must include `output_contract.toml`. It is the source of truth for what the instruction must document versus what stays internal to the harness.
+
+Required top-level declarations:
+- `user_visible_outputs` — every output path or named output surface the instruction must mention
+- `internal_harness_files` — internal scripts, source files, fixtures, helper binaries, or other runtime artifacts that tests may touch but the instruction does NOT need to expose
+- `structured_outputs.<name>` — one section per structured output schema that the instruction must document
+
+Example:
+
+```toml
+user_visible_outputs = ["/app/output/report.json"]
+internal_harness_files = ["/app/ci/harness/build_and_load.sh"]
+
+[structured_outputs.report]
+target = "/app/output/report.json"
+format = "json"
+instruction_checks = ["replays", "finish_reason", "tensor_sha256_hex"]
+```
+
+Rules:
+- Every `structured_outputs.<name>.target` must also appear in `user_visible_outputs`
+- `instruction_checks` must list the schema strings or contract tokens that instruction.md explicitly mentions
+- Do not smuggle internal helper paths into `user_visible_outputs`; put them in `internal_harness_files` instead
+- Structured outputs should expose observations, traces, measurements, artifacts, or run records. Tests derive verdicts from those records.
+- Avoid named boolean verdict fields unless they are a real product contract. Fields ending in `_ok`, `_green`, `_valid`, `_passes`, or `_stays_green` require explicit justification.
+- Do not put `scenario->key->expected` boolean answer tables in `instruction.md`; disclose schemas, invariants, formulas, types, sizes, constants, profile values, and argument splits without reciting expected truth bits.
+- Prefer cross-run invariants, metamorphic properties, round-trip checks, derived hashes from visible formulas, state convergence, schema/type checks, and partial-revert traps.
+- If exact formulas, types, sizes, constants, digest algorithms, or tolerances are tested, they must be visible in `instruction.md` or visible environment docs/source help. `output_contract.toml` is repo-local authoring metadata unless the same requirement is mirrored into a solver-visible surface.
+
+Bad output-contract shape:
+
+```json
+{
+  "readiness_green_alpha": true,
+  "bodies_match_across_profiles": true
+}
+```
+
+Good output-contract shape:
+
+```json
+{
+  "runs": [...],
+  "entries": [...],
+  "refreshes": [...]
+}
+```
+
+In the good shape, tests derive equality, convergence, schema, and invariant verdicts from the observations instead of reading pre-named truth bits.
+
+## Environment files (general policy)
+
+**Allowed.**
+- Files that provide realistic environment context: `README.md`, `architecture.md`, API documentation, schema files, sample configs, etc.
+- Diverse, realistic file names. Variety is encouraged — a dataset of tasks that all use the same handful of filenames trains the model on the shape, not the substance.
+
+**Not allowed.**
+- **AI-specific filenames.** `CLAUDE.md`, `skills.md`, and similar names that signal AI scaffolding are banned. The submission validator enforces a closed list of these names at any archive depth (see `REPO_CONVENTIONS.md` § "AI-scaffolding filenames are banned anywhere in the submission archive").
+- **Hidden instructions to the agent.** Environment files must NOT contain step-by-step walkthroughs, solution hints, or prescriptive TODOs. The task must remain a multi-step reasoning challenge; files that leak the answer defeat the project's purpose. `scripts/run_static_checks.py --only environment_hidden_instructions` enforces this.
+
+**Litmus test.** An environment file should look like something a human engineer would plausibly find in a real repo, not a guide written for the agent.
+
+## LICENSE files
+
+- **Small codebases:** licenses should almost never be included. Omit by default.
+- **Large codebases:** use the repos we provide — they already carry copyright licenses with explicit permission for dataset inclusion. If sourcing your own, the repo MUST be licensed under MIT, Apache 2.0, or BSD. Anything else is not allowed.
+
+## environment/Dockerfile
+
+The Docker environment must live under `environment/`.
+
+Required:
+
+```text
+environment/Dockerfile
+```
+
+or, for multi-container tasks:
+
+```text
+environment/docker-compose.yaml
+```
+
+**Construction-time constraints this section enforces.** Most Dockerfile rules are enforced mechanically by `scripts/run_static_checks.py` (see `docs/DOCKERFILE_AND_IMAGE_BEST_PRACTICES.md`):
+- `dockerfile` — digest-pinned `FROM` lines (except `scratch`), no `:latest`, canonical final-runtime digest or justified exception (`check_canonical_base_image.py`), pinned pip packages, unpinned apt packages, ecosystem lockfiles, `tmux` and `asciinema` present.
+- `dockerfile_copy_sources` — every `COPY`/`ADD` source path must resolve inside the build context. Dead references (e.g., `COPY .cargo /app/.cargo` with no `.cargo/` directory) are HIGH failures.
+- `build_context` — `environment/` at or below 100 MiB total with no file over 50 MiB, and a `.dockerignore` for non-trivial environments.
+- `package_hygiene` — no build-artifact dirs (`build/`, `bin/`, `target/`, `dist/`, `node_modules/`, `__pycache__/`) anywhere under `environment/`; no pre-computed outputs under `environment/{output,out,bin}/`.
+- `shell_script_integrity` — any file with a `#!` shebang must have LF line endings (CRLF breaks kernel interpretation).
+- `timeout_coherence` — `verifier.timeout_sec` must be ≥ `environment.build_timeout_sec` when `tests/` invokes a build step.
+
+Key rules:
+
+- Use `WORKDIR /app`.
+- Install `tmux` and `asciinema` explicitly, regardless of `network_mode`; the agent runtime needs both to start a session. A task with network access may obtain them some other way and appear to work, which is exactly how this breaks later.
+- Pin application dependencies exactly; pair each ecosystem with a lockfile (see §3 in `docs/DOCKERFILE_AND_IMAGE_BEST_PRACTICES.md`).
+- Every `FROM` must include `@sha256:<digest>`. Tags are optional readability; the digest is authoritative. `FROM scratch` is the only digest-exempt image. Never use `:latest`. Pulled `image:` values in `docker-compose.yaml` are digest-pinned the same way. **Digest pinning is separate from the canonical-image requirement — both apply.**
+- **Canonical base images (required for the final runtime stage):** use the exact digest-pinned image for the task's primary language family from `docs/DOCKERFILE_AND_IMAGE_BEST_PRACTICES.md` / `scripts/canonical_base_images.py`. The final `FROM` digest must match a canonical row. Builder stages may use task-appropriate toolchain images.
+- **Non-canonical base images (exception):** only when the task genuinely requires a different image. The justification must be a Dockerfile comment (`# Non-canonical base image: …`) — a README section no longer works, because Snorkel generates `README.md` at packaging and it never reaches CI. At submission select **No** on the canonical-base-image field. `scripts/check_canonical_base_image.py` and `run_static_checks.py` enforce this locally.
+- Do not use `latest`.
+- Do not copy `solution/`, `tests/`, or oracle answers into the image.
+- Do not use privileged mode.
+- Keep images lightweight.
+- Bake every dependency in at build time. Even with `network_mode = "public"`, nothing may be fetched at trial time.
+- Verifier-only packages (the pytest stack and any extra verifier-only wheels) belong in `tests/Dockerfile`, not here and not in `tests/test.sh`.
+- Solution/agent dependencies MUST be in the Dockerfile
+- No privileged mode, SYS_ADMIN, or docker.sock mounts
+- Build context must not escape `environment/`, must stay at or below 100 MiB total, and must contain no single file over 50 MiB
+- Data files: put in `environment/data/`, use `COPY data /root/data`
+- If cloning repos during build, pin to a specific commit
+
+Example Dockerfile:
+
+```dockerfile
+FROM public.ecr.aws/docker/library/python:3.13-slim-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb
+
+WORKDIR /app
+
+# tmux and asciinema are required by the agent runtime regardless of network_mode.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        tmux \
+        asciinema \
+        git \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+COPY app/ /app/
+ENV PYTHONPATH=/app
+```
+
+Dependency rules:
+
+- Good: `numpy==1.26.4` in `requirements.txt`, or `uv.lock` / `poetry.lock` with pinned installs
+- Good: `package-lock.json` / `pnpm-lock.yaml` / `yarn.lock` for Node tasks
+- Good: `Cargo.lock` for Rust; `go.sum` for Go
+- Bad: `numpy`
+- Bad: `numpy>=1.0`
+
+APT rules:
+
+- Use one apt transaction per stage, in a single `apt-get update && apt-get install -y --no-install-recommends … && rm -rf /var/lib/apt/lists/*`.
+- Do NOT version-pin apt packages (`pkg=version`). CI blocks pinned apt installs; pin LANGUAGE dependencies instead.
+- Do not run `apt-get upgrade`.
+- Keep build tools out of the final runtime image unless required.
+
+Use `.dockerignore` for non-trivial tasks and exclude caches, `.git`, virtualenvs, build outputs, credentials, `.env`, logs, `solution/`, and `tests/`.
+
+Forbidden:
+
+```dockerfile
+COPY solution/ /solution/
+COPY tests/ /tests/
+RUN mkdir -p /tests
+RUN mkdir -p /oracle
+RUN mkdir -p /solution
+```
+
+Reserved runtime paths:
+
+| Path | Purpose |
+|---|---|
+| `/logs/verifier/` | Reward file and verifier logs |
+| `/logs/agent/` | Agent logs |
+| `/oracle/` | Oracle solution mounted at runtime |
+| `/tests/` | Verifier sources; owned by the verifier image |
+
+Do not create or modify reserved paths in `environment/Dockerfile`, and do not
+declare them in `artifacts`. `tests/Dockerfile` is the one place `/tests` is
+created, because the separate verifier receives no upload of `tests/`.
+
+## environment/docker-compose.yaml
+
+If you include `environment/docker-compose.yaml`, start from this Harbor wiring template and only add task-specific services/options on top of it:
+
+```yaml
+services:
+  main:
+    build:
+      context: ${CONTEXT_DIR}
+    image: ${MAIN_IMAGE_NAME}
+    command:
+      - sh
+      - -c
+      - sleep infinity
+    environment:
+      - TEST_DIR=${TEST_DIR}
+    volumes:
+      - ${HOST_VERIFIER_LOGS_PATH}:${ENV_VERIFIER_LOGS_PATH}
+      - ${HOST_AGENT_LOGS_PATH}:${ENV_AGENT_LOGS_PATH}
+    deploy:
+      resources:
+        limits:
+          cpus: ${CPUS}
+          memory: ${MEMORY}
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+```
+
+Notes:
+- Keep `build.context: ${CONTEXT_DIR}` and `image: ${MAIN_IMAGE_NAME}` exactly as shown.
+- Keep `command: ["sh", "-c", "sleep infinity"]` so the workspace stays alive for agent/verifier execution.
+- Keep the verifier/agent log mounts so `/logs/verifier/reward.txt` is writable.
+- Any additional service that pulls an image must digest-pin it (`image: postgres:15@sha256:…`), same rule as `FROM`.
+- Set `[metadata].is_multi_container = true` when the compose file defines more than one service; the harness finds the file on its own.
+- If you need to disable BuildKit provenance/SBOM in specific environments, do it via environment or CI config rather than `build.provenance` / `build.sbom` keys in this file, since some Harbor runners reject those compose keys.
+
+## tests/Dockerfile
+
+`tests/Dockerfile` builds the verifier image and is required. The verifier runs
+in its own container: it never executes inside the agent's environment, and it
+sees nothing except the paths declared in the top-level `artifacts` array.
+
+Three rules produce most first-run verifier failures:
+
+1. **The image must own `/tests`.** Separate-mode verifiers receive no upload of `tests/`, so the image copies its own build context (`COPY . /tests/`).
+2. **Every verifier dependency is baked in and exact-pinned.** `pytest`, `pytest-json-ctrf`, plus anything else the assertions need. Nothing may be installed or downloaded at trial time.
+3. **Every declared artifact needs its landing directory created.** Harbor uploads each `artifacts` path into the verifier, and the upload fails when the parent directory is missing. The symptom looks like a broken test, so check this first.
+
+```dockerfile
+FROM public.ecr.aws/docker/library/python:3.13-slim-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb
+
+# Every verifier dependency is pinned and baked in; nothing is installed at trial time.
+RUN pip install --no-cache-dir pytest==8.4.1 pytest-json-ctrf==0.3.5
+
+# Separate-mode verifiers receive no upload of tests/, so the image must own /tests.
+# The build context is this tests/ directory.
+COPY . /tests/
+
+# Landing directories for every path declared in the top-level `artifacts` array.
+RUN mkdir -p /app/output
+```
+
+Every `FROM` here is digest-pinned and on a sanctioned base image, exactly as in
+`environment/Dockerfile`.
+
+## solution/solve.sh
+
+The oracle lives at `solution/solve.sh`. Helper scripts (`solve.py` and
+friends) may live alongside it and be called from `solve.sh`.
+
+Oracle rules:
+
+- Must be expert-authored.
+- Must be deterministic.
+- Must demonstrate the command sequence.
+- Must derive the answer, not hardcode it.
+- Should fail fast.
+- Should verify the result when possible.
+- Should not depend on external network services.
+
+Recommended header:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+```
+
+Avoid:
+
+- Echoing final answers that should be derived.
+- Randomness without seeds.
+- Time-dependent operations.
+- Network calls.
+- Silent failure patterns like `cd /bad/path || true`.
+
+**Construction-time constraints this section enforces.** `solve.sh` is the primary source of RC1 and RC7 signals:
+- RC1 (oracle simplification): must ADD real logic, not just delete/revert/flip flags
+- RC7 / A16 (oracle triviality + edit distance): non-boilerplate
+  semantic-delta LOC ≥ 30 floor, ≥ 80 for comfortable PASS. The
+  measurement is *substantive* fix logic; cosmetic operations
+  (comment-marker rewrites, whitespace shuffles, AST padding
+  outside the fix locus) do not count toward the threshold. If
+  the genuine fix is < 30 LOC the task is too simple — redesign
+  the concept, do not pad. If the genuine fix is in the 30-79
+  WARN band, either expand substantively or accept the WARN with
+  Step 3b documented justification. See `difficulty-calibration.mdc`
+  A16 WARN-band policy. Padding is a `00-authoring-critical.mdc`
+  §6 Forbidden shortcut.
+- Oracle-1x plumbing: outputs exactly what tests assert, deterministically
+
+- Must solve the entire instruction deterministically
+- Must perform real work, not hardcode answers or copy test expectations
+- Must not require interactive input or fetch web dependencies at runtime
+- Should use `set -euo pipefail` (this is for solve.sh ONLY — test.sh uses `set -uo pipefail` without `-e`, see below)
+- Can call Python/other scripts in the `solution/` folder
+- Must pass ALL tests when run inside the container
+- Write like a human (standard keyboard characters only)
+- For clean collapse results, oracle writes must be comparable to existing environment files and have substantive real diffs. If using inline Python `Path.write_text`, write paths relative to `/app/environment` (for example `os.chdir("/app/environment"); Path("pkg/file.py").write_text(...)`) or use patch paths rooted at the environment tree. Avoid whole-file rewrites whose only real change is a few lines; GX2/GX3 will flag tiny semantic diffs hidden in large bodies.
+- Must leave every path declared in `artifacts` populated. The verifier reads nothing else from the agent's final environment, so an oracle that produces the right result somewhere undeclared fails the same way an empty run does.
+
+### Determinism discipline (for Step 4's 10x flakiness check)
+`solve.sh` runs once in Step 2b as a sanity check and ten times in Step 4 as a flakiness check. A single pass is not evidence of determinism. While writing `solve.sh`:
+- No randomness (no unseeded `random`, no `$RANDOM`, no `uuidgen`).
+- No network calls, no external web resources.
+- No timing-dependent logic, no sleeps coupled to external state, no retry loops without bounded deterministic termination.
+- No filesystem-ordering dependence (iterate sorted, not raw `ls`).
+- No concurrency unless carefully scoped — concurrent writes to the same file are a common source of Step 4 10x failures.
+
+If any of the above is structurally required (e.g., a genuinely nondeterministic build step), isolate the nondeterministic part and normalize the output before tests see it.
+
+### Discoverability principle
+
+The task is hard because solving it requires real intellectual work — domain understanding, debugging, architectural reasoning, etc. Nothing the agent encounters should shortcut that work.
+
+For discoverability and collapse analysis in this repo, the authoritative solver-visible **file** surfaces are:
+- `instruction.md`
+- everything under `environment/`
+- everything under `tests/`
+- file and directory names reachable within those surfaces
+
+Treat these as authoring/package surfaces, not solver-visible file surfaces:
+- `task.toml`
+- `output_contract.toml`
+- everything under `solution/`
+- specs, jobs, reviewer notes, and packaging artifacts
+
+Discoverability can leak through any solver-visible file surface above, and through runtime behavior if you actually run the broken task:
+- **Instruction** — describes required behavior, not implementation fixes ("resumed runs drift" not "the CRC uses half the payload")
+- **Source/config/data files** — no markers, flags, annotations, commented-out correct values, or structural hints that reveal fix locations
+- **File/directory names** — neutral engineering names, not names that describe what's broken or what to fix
+- **Tests** — test names describe what to verify, not what to fix; assertions check outcomes, not implementation details
+- **Runtime behavior** — error messages guide debugging but don't pinpoint the exact fix
+
+The general test: could the agent skip the hard reasoning and find the solution through surface-level signals on any solver-visible file surface, or from runtime error output?
+
+**Complement: knob discoverability.** When the oracle solution toggles a build-time knob (CMake cache variable, build profile, env var) rather than editing source, the *agent must be able to discover the knob's name*. The instruction must mention it OR a comment in `environment/` must name it — bare appearances in code (`set(NAME 1)`, `#if NAME == 1`) do not count, because an agent rewriting the source would never preserve them. `scripts/run_static_checks.py --only oracle_knob_discoverability` enforces this. See `Task_Ready_To_Submit/rollback-replay-divergence.zip` for the canonical worked example: instruction names both `TB_TIMELINE_MODE` and `TB_REEXEC_MODE`, and `environment/CMakeLists.txt` carries an explanatory comment that survives any source-level edit.
+
+**Complement: path discoverability.** When the test fixture invokes a binary or reads a file at a fixed absolute path the agent must produce, the *agent must be able to discover that path*. For every `/app/...` path the tests resolve from a constant (e.g. `BIN = APP / "bin" / "netplay_matrix"`), the path must appear in `instruction.md` OR as a string literal / comment in `environment/`. Bare-code knob references don't count, but path string literals do — agents grep for `/app/` and find them. `scripts/run_static_checks.py --only oracle_path_discoverability` enforces this. The failure this prevents: agent solves the substantive problem perfectly, produces the correct outputs from `/app/build/<binary>`, and still fails every test because the fixture invokes the binary from `/app/bin/<binary>`.
+
+**Reference tasks.** Reference tasks are calibration examples, not clone
+sources. The catalog lives at `docs/reference_tasks/index.json`; policy and the
+metadata template live under `docs/reference_tasks/`. Before drafting, confirm
+the authoring spec has `reference_pattern.reference_task_id` for a promoted
+reference or `reference_pattern.justification_if_none` explaining why no
+reference applies. Validate with:
+
+```bash
+python3 scripts/reference_task_check.py specs/<task-name>.md --strict
+```
+
+Do not fork/copy a reference task merely to satisfy the mapping. If a ready zip
+is only listed as a promotion candidate, it is not yet a reference pattern.
+
+## Oracle Agent
+
+The Oracle Agent validates that the task is solvable.
+
+Run:
+
+```bash
+harbor run -a oracle -p <task-folder>
+harbor run -a oracle -p <task-folder> -v
+python3 scripts/harbor_gate.py tasks/<task-name> --oracle --nop
+```
+
+If Oracle fails, the task is broken.
+
+Debug interactively:
+
+```bash
+harbor tasks start-env -p <task-folder> -i
+```
+
+## NOP Agent
+
+The NOP Agent performs no work and should fail every task.
+
+If the NOP Agent passes, the task's tests or reward logic are probably broken.
+
+## tests/test.sh
+
+**Source of truth:** `default-template/tests/test.sh` at the repo root. Copy it into each task and change only the documented `[VARIABLE]` slots. Preserve command order, section comments, control flow, `set -uo pipefail`, the WORKDIR guard reward path, `rc=$?` capture, and the reward block. The checker validates the pre-`pytest` portion semantically and the reward tail textually. This script runs inside the verifier container built from `tests/Dockerfile`, not in the agent's environment.
+
+```bash
+#!/bin/bash
+set -uo pipefail
+
+# Check if we're in a valid working directory
+if [ "$PWD" = "/" ]; then
+    echo "Error: No working directory set. Please set a WORKDIR in your Dockerfile before running this script."
+    mkdir -p /logs/verifier
+    echo 0 > /logs/verifier/reward.txt
+    exit 0
+fi
+
+mkdir -p /logs/verifier
+
+# pytest and pytest-json-ctrf are baked into tests/Dockerfile.
+python -m pytest --ctrf /logs/verifier/ctrf.json /tests/test_outputs.py -rA
+
+# Produce reward file (REQUIRED)
+rc=$?
+if [ "$rc" -eq 0 ]; then
+    echo 1 > /logs/verifier/reward.txt
+else
+    echo 0 > /logs/verifier/reward.txt
+fi
+```
+
+The platform reward footer must use either `if [ $? -eq 0 ]` immediately after the `python -m pytest` line, or `rc=$?` on the line immediately before `if [ "$rc" -eq 0 ]` (no blank lines or comments between capture and `if`). Place `# Produce reward file (REQUIRED)` before `rc=$?`, not between `rc=$?` and the `if`.
+
+**What you MAY change** (only these, nothing else):
+1. Extra `python -m pytest` flags on the pytest line — e.g., `-p randomly`, `--randomly-seed=202`, or extra plugin options when the package is installed in `tests/Dockerfile`
+2. The test file path, which is `/tests/test_outputs.py` unless the verifier genuinely splits across modules
+
+**What you MUST NOT change:**
+- Do not add `-e` to the shell options — use `set -uo pipefail` only. A non-zero pytest exit must reach the reward block; with `-e` the script aborts first and the trial records no result at all. (The solve.sh section above says to use `set -euo pipefail` for the oracle — that does NOT apply here.)
+- Do not add `set -e`, `set -euo pipefail`, `set +e`, or any other shell strict-mode variant
+- Do not insert blank lines or comments between `rc=$?` and the reward `if` test (platform rejects this). The alternative `if [ $? -eq 0 ]` immediately after pytest is allowed, but prefer the `rc=$?` capture form shown above
+- Do not drop `--ctrf /logs/verifier/ctrf.json`; the structured test report is enforced
+- Do not install or download anything from `test.sh` (`apt-get`, `curl`, `wget`, `uv`, `uvx`, `pip install`, `npm install`, `git clone`) — every verifier dependency belongs in `tests/Dockerfile`
+- Do not delegate to another test framework (`go test`, `npm test`, `jest`, `vitest`, `cargo test`, `mvn test`, `dotnet test`); drive other toolchains from `test_outputs.py` via subprocess
+- Do not restructure the control flow in any way
+- Do not add extra pre-verifier commands beyond the WORKDIR guard and `mkdir -p /logs/verifier`
+
+The template always emits `/logs/verifier/reward.txt`; `reward.json` is not a supported reward sink. Harbor grades from the reward file, not from the script's exit status.
+
+The CI checker (`scripts/run_static_checks.py`) semantically validates the pre-`pytest` block (WORKDIR guard with failure reward, then `mkdir`) and textually validates the `rc=$?` capture and reward block. Verifier-only Python packages belong in `tests/Dockerfile` (see `default-template/tests/Dockerfile`).
+
+## tests/test_outputs.py
+
+The verifier is Python pytest regardless of the task's implementation language.
+For non-Python tasks, write Python tests that exercise the CLI, service, files,
+or processes under test. Remember what the verifier can see: only the paths
+declared in `artifacts`, collected from the agent's final environment into the
+verifier container.
+
+Test principles:
+
+- Test behavior, not implementation.
+- Every test must have an informative docstring.
+- Every explicit prompt requirement should map to a test.
+- Important implicit behavior and edge cases should be tested.
+- Tests must be deterministic.
+- Tests should be independent and not order-dependent.
+- Avoid brittle exact string matching.
+- Avoid source parsing unless the task explicitly requires it.
+- Avoid hardware-dependent latency thresholds.
+
+`tests/test.sh` must always write a reward file to `/logs/verifier/reward.txt`. Write `0` on failure. Do not exit before writing reward. Test dependencies are baked into `tests/Dockerfile`. Provide defaults for custom environment variables. `$HOME` and `$PWD` do not need defaults.
+
+**Construction-time constraints this section enforces.** Every rule below maps to a post-construction check you should pass first try:
+
+- NOP invariant → tests must reject the broken baseline (empty output, missing file, default value)
+- RC3 (verifier shallowness) → assertions check computed domain-correct values, not format/schema/existence alone
+- RC4 (tamper surface) → tests depend only on solver outputs, not on environment files the agent can rewrite
+- RC5 (reference artifacts) → expected values are embedded in test code, not read from solver-visible files
+- Part B (per-test feasibility) → each test is independently passable by multiple valid approaches
+- `instruction_test_vocabulary` static check → every exact-value assertion on an instruction-named field has that value grounded somewhere in `instruction.md` text
+
+### Structural rules
+- Use the exact filename `test_outputs.py`
+- Write normal pytest tests with informative docstrings
+- Test behavior, not implementation. Do not parse source code.
+- Every requirement in instruction.md → at least one test
+- Every test → must correspond to something in instruction.md
+- Every user-visible structured output field → at least one correctness assertion, not just a presence check. For booleans with meaningful true/false states, cover both polarities when both are part of the contract.
+- Prefer observation/tracing fields over boolean verdict fields. Tests should compute pass/fail from output records; booleans belong only when they are a real product-facing contract.
+- Cover edge cases and boundary conditions
+- Prefer structured/property-based assertions over exact-string equality
+- Include anti-cheating measures
+- No wall-clock, latency, throughput, or memory assertions
+- No test execution order dependency or shared global state
+- No hardcoded random values
+- Must pass `ruff` on verifier files and on `environment/` Python only (`scripts/run_static_checks.py` runs both; other languages under `environment/` are not linted by ruff)
+- Target at least 6 discoverable tests, preferably 10–15 for larger tasks
+
+### NOP-aware construction
+Every assertion must fail against the NOP baseline (what the agent sees before doing any work — typically missing files, empty outputs, or default/zero values). Before finalizing each test, ask: "if `solve.sh` did nothing, would this assertion catch it?" If the answer is no (e.g., `assert Path(output).exists()` passes on a touched-but-empty file), tighten the assertion to require domain-correct content, not mere existence.
+
+### RC3/RC4-aware construction
+- Do not assert only "file exists" or "JSON is valid" — assert the values inside are domain-correct.
+- Schema completeness checks are useful but insufficient on their own: each required key declared in `output_contract.toml` / `instruction.md` needs value-level coverage somewhere in the suite.
+- Do not read expected values from a file in `environment/` that the agent could rewrite. Compute expected values in test code from the task's specification, or embed them as literals.
+- If a test compares agent output to a reference, the reference must live in test code (`/tests/`), not in `environment/`.
+
+### Human-readable verifier output
+- Test names and docstrings should describe the observable invariant in plain language. Avoid reusing opaque task jargon in docstrings; a failing test's docstring should help a reviewer understand what behavior failed without decoding metaphors.
+
+### Per-test feasibility (prevents 0/10 per-test rejection)
+- Each test must be independently achievable, not chain-dependent on the full solution
+- If asserting an exact value, it must be the only correct answer
+- Each test should be passable by at least two valid solution approaches
+- Avoid tests requiring niche knowledge most agents would not try
+
+## Packaging
+
+Packaging is **Step 4's job**, not Step 2b's. Step 2b drafts files and runs the verification chain (static checks, collapse check, oracle 1x + NOP); Step 4 is where the submission zip is actually created, validated, and approved. The instructions below are the rules Step 4 enforces — they are documented here so construction stays aware of what will ship.
+
+### Files at archive root
+
+Required (must be in the zip, at the archive root):
+- `instruction.md`
+- `task.toml`
+- `environment/` directory, with `Dockerfile` or `docker-compose.yaml`
+- `solution/` directory, with `solve.sh`
+- `tests/` directory, with `Dockerfile`, `test.sh`, and `test_outputs.py`
+
+Forbidden (must NOT be in the zip, even though some live at the task root for repo tooling):
+- `rubric.txt`, `rubrics.txt` — the rubric is authored in the platform submission UI and Snorkel adds the file at packaging.
+- `README.md` — Snorkel assembles it at packaging from the `[metadata]` explanation fields. An author copy makes the packaged task disagree with the platform.
+- `output_contract.toml` — authoring metadata; read by repo tooling, not shipped.
+- `quality_check_adjudication.json`, `construction_manifest.json`, `waivers.json` — repo-internal authoring and adjudication metadata.
+- `.step2b-checksum`, `.step2b-metrics.jsonl`, and anything under `__pycache__/`, `.*`, `*.pyc`.
+
+That is the canonical `validate_submission_zip.FORBIDDEN_ROOT_FILES` list. Do not hand-roll the zip — `scripts/package_task.py` applies the exclusions for you:
+
+```bash
+python3 scripts/package_task.py tasks/<task-name> --out Task_Ready_To_Submit/<task-name>.zip --validate
+```
+
+`scripts/validate_submission_zip.py` returning PASS is the gate, not the goal — Step 4 then runs `scripts/approve_task.py` as the authoritative repo-local approval, which bundles `scripts/run_static_checks.py` + `scripts/collapse_check.py` + zip validation + manifest verification + zip/source parity.
+
+### Construction-time implications
+
+- Do NOT place `rubrics.txt` or `README.md` at the task root. Both FAIL `scripts/run_static_checks.py --only task_structure` before packaging ever runs.
+- DO place `output_contract.toml` at the task root. It is required by repo conventions and read by `scripts/run_static_checks.py --only output_contract`; the packaging step keeps it out of the shipped zip without forcing you to move it.
+- Do NOT add the forbidden files to `.gitignore` — the repo-local ones must be committed to the task directory for repo tooling; only the packaging step excludes them.
+
+## Submission Checklist
+
+- [ ] Correct skeleton used.
+- [ ] Folder name is kebab-case.
+- [ ] `task.toml` has valid schema and metadata; descriptive fields under `[metadata]`.
+- [ ] Category and subcategory are exactly one each, Title Case, and accurate.
+- [ ] Top-level `artifacts` declares every path the verifier reads, and `tests/Dockerfile` creates each landing directory.
+- [ ] `[verifier].environment_mode = "separate"`; `[agent].timeout_sec` between 1800 and 18000.
+- [ ] Instructions are concise, realistic, and use absolute paths.
+- [ ] Instructions do not give hints or solution steps.
+- [ ] Every `FROM` is digest-pinned (`@sha256`), in both `environment/` and `tests/`; final runtime `FROM` uses the canonical base image for the task's primary language, or non-canonical use has a Dockerfile-comment justification and the submission UI answer ready
+- [ ] Dockerfile is reproducible and lightweight; `environment/` at or below 100 MiB with no file over 50 MiB.
+- [ ] `tmux` and `asciinema` are installed.
+- [ ] Language dependencies are pinned; apt packages are NOT version-pinned.
+- [ ] No `solution/` or `tests/` copied into the environment image.
+- [ ] No reserved directories created or modified.
+- [ ] Oracle solution is deterministic and derives the answer.
+- [ ] Tests are behavioral, deterministic, and documented.
+- [ ] `test.sh` always writes reward and installs nothing at trial time.
+- [ ] Oracle Agent passes.
+- [ ] NOP Agent fails.
+- [ ] No runtime web fetching.
+- [ ] No privileged mode.
+- [ ] No latency-based tests.
+- [ ] Oracle and agent use identical test logic.
+- [ ] Rubric is task-specific and properly formatted (authored in the platform UI, not in the repo).
+
+## Pre-submit self-check (before reporting `done` in Step 2b)
+
+Before concluding Step 2b, walk this construction checklist. Each item corresponds to a check that will run downstream — a disciplined draft passes every one on the first mechanical run.
+
+**File layout**
+- [ ] All required files present: `instruction.md`, `task.toml`, `output_contract.toml`, `environment/Dockerfile`, `solution/solve.sh`, `tests/{Dockerfile,test.sh,test_outputs.py}`
+- [ ] No forbidden files at task root (`rubric.txt`, `rubrics.txt`, `README.md`, AI-scaffolding filenames like `CLAUDE.md` / `skills.md` at any depth)
+- [ ] No Windows/NTFS metadata sidecars such as `*:Zone.Identifier` anywhere under the task tree; remove them before running `check-task.sh` or `scripts/task_integrity.py`
+- [ ] No milestone leftovers: no `steps/`, no `milestone_*.md`, no `test_mN.py`, no `solveN.sh`
+- [ ] `output_contract.toml` present at task root (required; excluded from zip later)
+- [ ] Not a multi-container task
+- [ ] Task is substantively original — not a templated reskin of a prior submission (structure, oracle approach, or test patterns reused with surface swaps)
+- [ ] No `LICENSE` file unless the codebase is large; if present, license is one of MIT, Apache 2.0, or BSD
+- [ ] No environment files contain hidden agent instructions (HINT:/STEP N: walkthroughs, "to solve this..."), and no AI-specific filenames (`CLAUDE.md`, `skills.md`, …) anywhere under the archive
+
+**Instruction (RC6 + §1)**
+- [ ] No named algorithms, implementation-internal schema enumerations, CLI/flag lists, patch-selecting thresholds, solution-path binding phrases, scope closures, file/function locations, or cause statements
+- [ ] No emojis, no decorative unicode, no bold markers on solution-adjacent values
+- [ ] No roleplay boilerplate, no verifier-centric phrasing, no step-by-step recipes
+- [ ] Absolute paths, not relative
+- [ ] 150-200 words of actionable content, human-voiced prose
+- [ ] Task name not leaked; no legacy canary strings
+- [ ] Every exact-value assertion in tests has its value grounded somewhere in instruction text (`instruction_test_vocabulary` check)
+- [ ] No `internal_harness_files` path surfaced (unless also in `user_visible_outputs`)
+
+**task.toml (§5 + static checks)**
+- [ ] All required `[metadata]` fields present, and none of them left only at the top level
+- [ ] Top-level `artifacts` present, absolute, non-empty, no Harbor-reserved paths; never nested under `[verifier]`
+- [ ] No retired keys (`codebase_size`, `number_of_milestones`, `subcategories`, `allow_internet`, `junior_time_estimate_min`, `expert_time_estimate_min`, `custom_docker_compose`) and no top-level `version`
+- [ ] No Harbor-framework-only fields (`schema_version`, `[task]`, `min_reward`, `multi_step_reward_strategy`, `workdir/setup.sh`)
+- [ ] Author placeholders kept anonymous (`"your-name"` / `"your-email"` / `"anonymous"` — never a real identifier)
+- [ ] `difficulty` is a measured tier (`frontier` / `advanced` / `core` / `base`), not an Edition 2 name
+- [ ] One Title Case `category` and one valid `subcategory`; 3-6 tags, no padding
+- [ ] The four explanation write-ups say something real — Snorkel builds the packaged README from them
+- [ ] `[verifier].environment_mode = "separate"`; `verifier.timeout_sec` ≥ `environment.build_timeout_sec` if tests build anything; `agent.timeout_sec` between 1800 and 18000
+- [ ] `[environment]` declares `network_mode`, `build_timeout_sec`, `cpus`, `memory_mb`, `storage_mb`; no GPU request
+
+**Environment / Dockerfile (§2 + static checks)**
+- [ ] `WORKDIR` set; every `FROM` digest-pinned (`scratch` exempt); no `:latest`; apt versions NOT pinned; ecosystem lockfiles present
+- [ ] Final runtime `FROM` digest matches a canonical row in `docs/DOCKERFILE_AND_IMAGE_BEST_PRACTICES.md`, or non-canonical use has a Dockerfile-comment justification + submission UI **No** prepared
+- [ ] `tmux` and `asciinema` installed explicitly
+- [ ] Every `COPY`/`ADD` source resolves inside build context; `environment/` ≤ 100 MiB total, no file > 50 MiB, `.dockerignore` present for non-trivial environments
+- [ ] No `solution/`, `tests/`, or oracle answer files copied into image
+- [ ] No build-artifact directories under `environment/`
+- [ ] No privileged, SYS_ADMIN, or docker.sock mounts
+- [ ] `tests/Dockerfile` copies its context into `/tests`, pins every verifier dependency, and `mkdir -p`s each declared artifact's parent directory
+- [ ] All shebanged scripts use LF line endings
+
+**Tests (RC3/RC4/RC5 + NOP + Part B)**
+- [ ] `tests/test.sh` matches the canonical template verbatim (control flow, `set -uo pipefail`, `--ctrf` flag, `rc` capture, reward block); only documented `[VARIABLE]` slots changed
+- [ ] `tests/test.sh` installs and downloads nothing at trial time
+- [ ] Everything the tests read is covered by the `artifacts` declaration
+- [ ] Every assertion fails against the NOP baseline (empty output, missing file, default value)
+- [ ] Assertions check domain-correct computed values, not format/existence alone
+- [ ] Every required structured-output field has value-level coverage; boolean output fields cover both true and false when both states are meaningful
+- [ ] Shared assertion helpers enforce only behavior documented in `instruction.md`, a referenced env contract doc, or a visible code/docstring stub
+- [ ] Test docstrings state the observable invariant in plain language, not task-specific metaphor jargon
+- [ ] Expected values live in test code, not in `environment/` files the agent could rewrite
+- [ ] No order dependency, no shared global state, no flaky timing
+- [ ] Each test is independently passable by multiple valid approaches
+- [ ] 6+ tests (10-15 for larger tasks), discoverable `test_*` names
+
+**Solve.sh (RC1 + RC7)**
+- [ ] Non-boilerplate LOC ≥ 30 (target 80+)
+- [ ] Adds real logic; no pure `sed -i '/BUG/d'` reverts
+- [ ] `scripts/collapse_check.py` has 0 WARN: oracle targets resolve to existing env files, real edit distance clears GX3 honestly, no tiny-diff bulk rewrites, and fix frontier is not a small one-subsystem cluster
+- [ ] No randomness, no network, no timing dependencies, no filesystem-ordering assumptions (10x-ready)
+- [ ] Leaves every declared artifact path populated
+
+**Solver-visible surfaces (RC2/RC5 + discoverability)**
+- [ ] No `broken_*`, `buggy_*`, `fix_me_*`, `golden_*`, `expected_*` tokens in file or directory names
+- [ ] No answer-shaped fixtures in solver-visible surfaces
+- [ ] Test names describe what to verify, not what to fix
+- [ ] Comments in `environment/` do not reveal fix locations or correct values
+
+If any item above is not satisfied, fix it before reporting `done` in Step 2b. The Step 2b mechanical chain (spec/static → hard-but-fair lints → smoke where available → collapse check → oracle 1x + NOP) then confirms, not discovers, that construction was correct. If the collapse early-stop rule fires, stop local edits and emit the redesign report instead of continuing to patch.

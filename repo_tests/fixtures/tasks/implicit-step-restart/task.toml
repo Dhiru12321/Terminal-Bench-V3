@@ -1,0 +1,34 @@
+artifacts = [
+  "/app/out/restart_report.json",
+  "/app/out/persistence_audit.log",
+  "/app/work/snapshot.bin",
+]
+name = "implicit-step-restart"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Science"
+subcategory = "Physics"
+tags = ["time-integration", "checkpoint", "stiff-ode", "numerical-analysis", "restart-fidelity"]
+languages = ["cpp"]
+difficulty = "advanced"
+expert_time_estimate_hours = 2
+difficulty_explanation = "The restart path silently reuses a stale stage cache, so a resumed run diverges from an uninterrupted one only after the controller rejects a step."
+solution_explanation = "solve.sh invalidates the stage cache on restart and rebuilds the embedded error estimate from the persisted bundle."
+verification_explanation = "tests/test_outputs.py replays the interrupted and uninterrupted schedules and requires bit-identical trajectories."
+relevant_experience = "Numerical integration and checkpoint/restart fidelity in scientific solvers."
+
+[verifier]
+timeout_sec = 900
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 3600
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 600
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240

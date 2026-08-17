@@ -1,0 +1,30 @@
+artifacts = ["/app/output/report.json"]
+name = "byzantine-storage-rebalance"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Systems"
+tags = ["erasure-coding", "checkpoint", "simulation", "distributed-state", "rebalance"]
+languages = ["go"]
+difficulty = "advanced"
+expert_time_estimate_hours = 1
+difficulty_explanation = "The rebalance planner reuses an epoch fingerprint across a failover boundary, so the corruption only appears in replays that cross a segment handoff."
+solution_explanation = "solve.sh recomputes the fingerprint per epoch and reorders the stager so handoffs observe the committed catalog."
+verification_explanation = "tests/test_outputs.py drives the three recorded replays and requires the emitted report to match the golden catalog state."
+relevant_experience = "Distributed storage rebalancing and erasure-coded segment handoff."
+
+[verifier]
+timeout_sec = 300
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 1800
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 600
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240

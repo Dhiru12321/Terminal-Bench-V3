@@ -1,0 +1,30 @@
+artifacts = ["/app/output/surface.json"]
+name = "quota-atime-drift"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Systems"
+tags = ["storage", "accounting", "determinism"]
+languages = ["rust"]
+difficulty = "advanced"
+expert_time_estimate_hours = 1
+difficulty_explanation = "Pending journal work stays outside the consolidated block and inode counters, so one column of each quota pair creeps ahead and the tail, anchor, and pass indicator describe incompatible finishes."
+solution_explanation = "solve.sh folds pending accounting into the materialized totals on every transition that advances the anchored sequence and derives head_w32 from the widths the hashing contract in lib.rs specifies."
+verification_explanation = "tests/test_outputs.py runs every scenario under /app/data/scenarios twice and requires identical TopSurface rows with internally consistent pairs and head_w32."
+relevant_experience = "Filesystem quota accounting, atime journaling, and deterministic Rust rollup pipelines."
+
+[verifier]
+timeout_sec = 700
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 3600
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 600
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240

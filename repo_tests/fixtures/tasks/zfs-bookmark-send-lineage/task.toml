@@ -1,0 +1,30 @@
+artifacts = ["/app/output/coherence.json"]
+name = "zfs-bookmark-send-lineage"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Systems"
+tags = ["storage", "replication", "incremental", "mirrors", "orchestration"]
+languages = ["python"]
+difficulty = "advanced"
+expert_time_estimate_hours = 4
+difficulty_explanation = "Incremental sends resume from a bookmark whose lineage no longer matches the receiving side, so the mirror job reports a green summary and parity against the old anchor label while whole subtrees never arrive."
+solution_explanation = "solve.sh re-derives the send lineage from the current bookmark ancestry instead of the stale anchor label and stops the sender phase from reporting completion when throttled apply diagnostics fire."
+verification_explanation = "tests/test_outputs.py collects the scenarios in test_outputs.py and requires replay_ok, stderr_gate_ok, and facade_ok in coherence.json per output_contract.toml."
+relevant_experience = "ZFS snapshot and bookmark lineage, incremental send/receive replication, and mirror orchestration."
+
+[verifier]
+timeout_sec = 600
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 9000
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 600
+cpus = 1
+memory_mb = 2048
+storage_mb = 10240

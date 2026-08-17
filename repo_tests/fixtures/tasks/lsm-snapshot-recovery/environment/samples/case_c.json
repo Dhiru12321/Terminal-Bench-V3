@@ -1,0 +1,33 @@
+{
+  "scenario_id": "case_c",
+  "ops": [
+    {
+      "op": "put",
+      "key": "alpha",
+      "value": "one"
+    },
+    {
+      "op": "flush"
+    },
+    {
+      "op": "put",
+      "key": "beta",
+      "value": "two"
+    },
+    {
+      "op": "crash_truncate_journal",
+      "keep_bytes": 18
+    },
+    {
+      "op": "restart"
+    },
+    {
+      "op": "get",
+      "key": "alpha"
+    },
+    {
+      "op": "get",
+      "key": "beta"
+    }
+  ]
+}

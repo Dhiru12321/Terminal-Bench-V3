@@ -1,0 +1,110 @@
+# =============================================================================
+# AGENT SETUP MANIFEST — reproduce this TB3 authoring environment on another device
+# =============================================================================
+#
+# This file is intentionally hybrid:
+#   • Comments below are machine-readable instructions for an AI (or human) to
+#     reinstall the same toolchain versions (Python, uv, Harbor, Docker, …).
+#   • The non-comment lines are a normal pip requirements list; install with:
+#         uv venv .venv --python 3.10.12
+#         uv pip install -r requirements.txt --python .venv/bin/python
+#     (System `/usr/bin/python3` here has no `pip`; use `uv` or `ensurepip`.)
+#
+# ---------------------------------------------------------------------------
+# VERIFIED ON THIS HOST (agent shell — re-run to confirm after OS upgrades)
+# ---------------------------------------------------------------------------
+#   python3:            Python 3.10.12  (interpreter: /usr/bin/python3)
+#   .python-version:    3.10.12         (pyenv / asdf; matches host python3)
+#   uv / uvx:           0.9.5
+#   harbor:             0.1.44          (`harbor --version`)
+#   docker:             29.2.1 (build a5c7197)
+#   docker compose:     v5.1.0          (`docker compose version`)
+#
+#   Pip wheels below were resolved on CPython 3.10.12 via `uv pip install -r …`
+#   (not preinstalled on bare `/usr/bin/python3`).
+#
+# ---------------------------------------------------------------------------
+# AUTHORING / PACKAGING — repo-root *.py harness (stdlib-only unless noted)
+# ---------------------------------------------------------------------------
+#   scripts/check-task.sh → scripts/run_static_checks.py, scripts/collapse_check.py,
+#       scripts/validate_submission_zip.py, scripts/task_integrity.py, scripts/metrics_collector.py
+#   scripts/approve_task.py       → same gates + packaging parity checks
+#   Root harness modules   → stdlib only (no extra pip beyond this file).
+#
+#   Host binaries / PATH:
+#     • zip, unzip       — Phase B temp zip + Step 4 packaging (also Python zipfile for some paths)
+#     • bash             — check-task.sh, solve/test templates
+#     • git              — workflow in commands.md (branching, commits); not invoked by *.py gates
+#     • uuidgen          — optional; check-task.sh falls back to Python secrets
+#     • ruff             — scripts/run_static_checks.py runs `ruff check` when on PATH (wheel below)
+#
+# ---------------------------------------------------------------------------
+# STEP 2a — scripts/validate_loop.py (idea validation / evidence JSON)
+# ---------------------------------------------------------------------------
+#   jsonschema           — REQUIRED when running `scripts/validate_loop.py record` / schema validation
+#                           (import guarded; errors if missing on that code path)
+#
+# ---------------------------------------------------------------------------
+# STEP 2b / STEPS 3–4 — Harbor + Docker (oracle, NOP, QC, approval)
+# ---------------------------------------------------------------------------
+#   harbor CLI + Docker Engine + Compose V2 — see versions in VERIFIED block above
+#   Optional API keys (human workflow — not read by repo *.py except where noted):
+#     • .env / OPENAI_*   — `harbor tasks check` quality pass (commands.md Step 3a-Q)
+#     • GPTZERO_API_KEY — ci_checks/check-ai-detection.py (GPTZero HTTP API; stdlib only)
+#
+# ---------------------------------------------------------------------------
+# UV / UVX (inside Harbor verifier images — match tasks/*/tests/test.sh templates)
+# ---------------------------------------------------------------------------
+#   Installer URL pin:  https://astral.sh/uv/0.9.5/install.sh   (matches host uv)
+#   pytest (uvx -w):    8.4.1
+#   pytest-json-ctrf:   0.3.5
+#   uvx `-p` default:   3.13 (most tasks); 3.11 in tasks/cgroup-lease-resurrection/tests/test.sh only
+#
+# ---------------------------------------------------------------------------
+# OPTIONAL REVIEWER AIDS — ci_checks/*.py (not part of check-task / approve_task defaults)
+# ---------------------------------------------------------------------------
+#   ci_checks/rubric_review.py       — PEP 723 script; declares dependency `anthropic`.
+#                                       Typical run: `uv run ci_checks/rubric_review.py …`
+#                                       (isolates deps) OR pip-install anthropic pin below.
+#   ci_checks/check-similarity.py    — scikit-learn + pulls numpy/scipy stack; advisory duplicate finder.
+#   ci_checks/check-ai-detection.py  — stdlib only; needs GPTZERO_API_KEY env var.
+#   ci_checks/test_structure_signals.py — imports rubric_review (tests rubric helpers).
+#
+#   Uncomment if you run those scripts via plain `python3` without `uv run`:
+#     # anthropic==0.100.0
+#     # scikit-learn==1.8.0
+#
+# ---------------------------------------------------------------------------
+# TASK IMPLEMENTATION TREES — tasks/<name>/ (outside repo-root gates)
+# ---------------------------------------------------------------------------
+#   • tests/test_outputs.py — usually pytest (+ occasional PyYAML in env code, see tasks).
+#   • UI tasks — Node/npm + Playwright per tests/test.sh UI template (not listed here).
+#   • Compiled tasks — may invoke cargo/cmake/make/go inside Docker images, not on host.
+#
+# ---------------------------------------------------------------------------
+# NOTES FOR PYTHON 3.10 HOSTS
+# ---------------------------------------------------------------------------
+#   • Some repo_tests fixtures use stdlib `tomllib` (3.11+). On 3.10.12, pytest pulls
+#     `tomli` transitively for some stacks; a few fixture imports may still need 3.11+.
+#
+# ---------------------------------------------------------------------------
+# POSIX UTILITIES (scripts/check-task.sh, packaging, gates)
+# ---------------------------------------------------------------------------
+#   bash, curl, zip/unzip, uuidgen (optional — harness falls back to Python secrets), python3
+#
+# ---------------------------------------------------------------------------
+# OPTIONAL TASK-ONLY WHEELS (uncomment on-host only when hacking those paths)
+# ---------------------------------------------------------------------------
+#   flask==3.0.3        # tasks/readyfile-prematurity/environment/requirements.txt
+#   werkzeug==3.0.3     # same
+#
+# =============================================================================
+
+# --- Gates + local pytest / lint ---
+pytest==8.4.1
+pytest-json-ctrf==0.3.5
+PyYAML==6.0.3
+ruff==0.15.12
+
+# --- Step 2a validate_loop evidence validation ---
+jsonschema==4.26.0

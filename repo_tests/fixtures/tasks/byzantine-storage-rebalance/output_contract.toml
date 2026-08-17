@@ -1,0 +1,14 @@
+user_visible_outputs = [
+  "/app/output/report.json",
+]
+
+internal_harness_files = []
+
+[structured_outputs.report]
+target = "/app/output/report.json"
+format = "json"
+instruction_checks = [
+  "replays",
+  "finish_reason",
+  "checkpoints",
+]

@@ -1,0 +1,13 @@
+# Mirrors AGENT SETUP MANIFEST.txt (gates + validate_loop).
+#   uv venv .venv --python 3.10.12
+#   uv pip install -r requirements.txt --python .venv/bin/python
+#   source .venv/bin/activate
+
+# Gates + local pytest / lint
+pytest==8.4.1
+pytest-json-ctrf==0.3.5
+PyYAML==6.0.3
+ruff==0.15.12
+
+# Step 2a validate_loop evidence validation
+jsonschema==4.26.0

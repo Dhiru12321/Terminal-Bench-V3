@@ -1,0 +1,30 @@
+artifacts = ["/app/output/lease_report.json"]
+name = "namespace-lease-drift"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Systems"
+tags = ["namespaces", "cleanup", "runtime-ledger", "sandboxing", "diagnostics"]
+languages = ["rust"]
+difficulty = "frontier"
+expert_time_estimate_hours = 1
+difficulty_explanation = "Nine interlocking per-scenario fields must be derived from mount, pid, and cgroup tallies that never appear in the emitted rows, and the report has to come from the patched drillctl binary rather than hand-authored JSON."
+solution_explanation = "solve.sh fixes the teardown ledger in /app/src so credited users drain before the report, then rebuilds with the README-documented locked release invocation that overwrites lease_report.json."
+verification_explanation = "tests/test_outputs.py checks the four-field root, ASCII-sorted scenario rows, the healthy/leaking status rule, and the witness_tag letter sequence against overall_status."
+relevant_experience = "Linux namespace teardown accounting, runtime lease ledgers, and Rust diagnostic tooling."
+
+[verifier]
+timeout_sec = 900
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 3600
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 400
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240

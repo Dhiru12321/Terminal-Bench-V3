@@ -1,0 +1,30 @@
+artifacts = ["/app/output/coherence.json"]
+name = "stale-bind-mount-post-rotate-journal"
+
+[metadata]
+author_name = "anonymous"
+author_email = "anonymous"
+category = "Software"
+subcategory = "Systems"
+tags = ["linux", "vfs", "logging", "namespaces", "rotation"]
+languages = ["python"]
+difficulty = "advanced"
+expert_time_estimate_hours = 4
+difficulty_explanation = "After rotation the writer keeps appending through a descriptor bound to the unlinked inode, so the pathname and the resolver-backed host aggregates both read nominal while the tailing consumer sees nothing new."
+solution_explanation = "solve.sh ties the append path's fd_bound_gen to tick_gen so the sink descriptor is reopened when rotation advances the generation, restoring tail visibility without restarting the writer."
+verification_explanation = "tests/test_outputs.py reads handles_ok, tail_ok, and facet_ok from coherence.json per output_contract.toml and requires all three after a rotation cycle."
+relevant_experience = "Linux VFS and bind-mount propagation, log rotation semantics, and stale file descriptor debugging."
+
+[verifier]
+timeout_sec = 600
+environment_mode = "separate"
+
+[agent]
+timeout_sec = 9000
+
+[environment]
+network_mode = "no-network"
+build_timeout_sec = 600
+cpus = 1
+memory_mb = 2048
+storage_mb = 10240
